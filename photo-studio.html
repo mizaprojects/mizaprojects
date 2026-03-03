@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Studio — Offline</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --s1: #111118;
+  --s2: #1a1a26;
+  --border: #2a2a3d;
+  --accent: #7c6dfa;
+  --accent2: #fa6d9a;
+  --text: #e8e8f0;
+  --muted: #6b6b88;
+  --success: #4ade80;
+  --warn: #fbbf24;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+.glow { position: fixed; pointer-events: none; border-radius: 50%; }
+.gl { top:-20%; left:-10%; width:500px; height:500px; background: radial-gradient(circle,rgba(124,109,250,.11) 0%,transparent 70%); }
+.gr { bottom:-20%; right:-10%; width:600px; height:600px; background: radial-gradient(circle,rgba(250,109,154,.07) 0%,transparent 70%); }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 36px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10,10,15,.92);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; letter-spacing: -.03em; }
+.logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg,var(--accent),var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.badge { font-size: .62rem; font-weight: 700; padding: 3px 10px; background: var(--s2); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); letter-spacing: .08em; }
+
+.layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; min-height: calc(100vh - 61px); }
+
+/* SIDEBAR */
+.sidebar {
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto; height: calc(100vh - 61px);
+  position: sticky; top: 61px;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: var(--s1); }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.section { padding: 20px; border-bottom: 1px solid var(--border); }
+.section-title {
+  font-size: .68rem; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::before { content: ''; width: 3px; height: 3px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+/* Upload zone */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 12px; padding: 28px 16px;
+  text-align: center; cursor: pointer;
+  transition: all .3s; position: relative;
+  overflow: hidden;
+}
+.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(124,109,250,.05); }
+.dropzone.has { padding: 0; cursor: default; border-style: solid; }
+.dropzone img { width: 100%; max-height: 180px; object-fit: contain; border-radius: 10px; display: block; }
+.dz-icon { font-size: 1.8rem; animation: float 3s ease-in-out infinite; margin-bottom: 6px; }
+.dz-text { font-size: .82rem; margin-bottom: 4px; }
+.dz-sub { font-size: .72rem; color: var(--muted); }
+.dz-change { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.75); border: none; color: var(--text); border-radius: 7px; padding: 3px 9px; cursor: pointer; font-size: .68rem; font-family: inherit; }
+
+/* Presets */
+.presets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.preset-btn {
+  padding: 7px 4px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--muted); font-size: .7rem;
+  cursor: pointer; font-family: inherit; transition: all .2s; text-align: center;
+}
+.preset-btn:hover { border-color: var(--accent); color: var(--text); }
+.preset-btn.active { border-color: var(--accent); background: rgba(124,109,250,.15); color: var(--accent); }
+
+/* Sliders */
+.slider-row { display: flex; flex-direction: column; gap: 10px; }
+.slider-item { display: flex; flex-direction: column; gap: 5px; }
+.slider-header { display: flex; justify-content: space-between; align-items: center; }
+.slider-label { font-size: .74rem; color: var(--muted); }
+.slider-val {
+  font-size: .72rem; font-weight: 600; color: var(--text);
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 1px 7px; min-width: 38px; text-align: center;
+}
+input[type=range] {
+  -webkit-appearance: none; width: 100%; height: 3px;
+  background: var(--border); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: var(--accent); border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 6px rgba(124,109,250,.5);
+}
+input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; }
+
+/* Reset btn */
+.reset-btn {
+  width: 100%; padding: 10px;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 10px; color: var(--muted); font-size: .78rem;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.reset-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+/* Action buttons */
+.action-row { display: flex; gap: 8px; flex-direction: column; padding: 16px 20px; }
+.primary-btn {
+  padding: 13px; background: linear-gradient(135deg,var(--accent),var(--accent2));
+  border: none; border-radius: 11px; color: #fff;
+  font-weight: 700; font-size: .88rem; cursor: pointer;
+  font-family: inherit; transition: all .3s; letter-spacing: .03em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.primary-btn:disabled { background: var(--s2); color: var(--muted); cursor: not-allowed; }
+.primary-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(124,109,250,.4); }
+.secondary-btn {
+  padding: 11px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 11px; color: var(--text); font-size: .82rem;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  text-decoration: none;
+}
+.secondary-btn:hover { border-color: var(--success); color: var(--success); }
+.secondary-btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+/* CANVAS AREA */
+.canvas-area {
+  display: flex; flex-direction: column;
+  background: var(--bg); flex: 1;
+}
+.canvas-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 24px; border-bottom: 1px solid var(--border);
+  background: var(--s1); flex-wrap: wrap;
+}
+.tool-label { font-size: .72rem; color: var(--muted); }
+.toggle-group { display: flex; gap: 3px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+.toggle-btn {
+  padding: 5px 14px; border: none; border-radius: 6px;
+  background: transparent; color: var(--muted);
+  font-size: .72rem; cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.toggle-btn.on { background: var(--accent); color: #fff; }
+.spacer { flex: 1; }
+.img-info { font-size: .7rem; color: var(--muted); }
+
+.canvas-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 32px; position: relative;
+}
+.canvas-inner { position: relative; display: inline-block; max-width: 100%; }
+#mainCanvas {
+  max-width: 100%; max-height: calc(100vh - 180px);
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  display: block;
+}
+.canvas-empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; color: var(--muted); text-align: center;
+}
+.canvas-empty .big-icon { font-size: 4rem; opacity: .15; }
+.canvas-empty h2 { font-size: 1.1rem; font-weight: 600; color: var(--text); }
+.canvas-empty p { font-size: .82rem; line-height: 1.7; max-width: 260px; }
+
+/* Compare slider overlay */
+#compareCanvas {
+  position: absolute; top: 0; left: 0;
+  max-width: 100%; max-height: calc(100vh - 180px);
+  border-radius: 12px; display: none; pointer-events: none;
+}
+.compare-line {
+  position: absolute; top: 0; bottom: 0; width: 3px;
+  background: white; cursor: ew-resize; display: none;
+  box-shadow: 0 0 10px rgba(0,0,0,.5);
+  z-index: 10;
+}
+.compare-handle {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 36px;
+  background: white; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem; box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  color: #333;
+}
+.compare-lbl-l, .compare-lbl-r {
+  position: absolute; top: 12px;
+  font-size: .6rem; font-weight: 700; letter-spacing: .1em;
+  background: rgba(0,0,0,.7); padding: 3px 8px; border-radius: 6px;
+  display: none; z-index: 11;
+}
+.compare-lbl-l { left: 12px; color: #aaa; }
+.compare-lbl-r { right: 12px; color: var(--accent); }
+
+/* History strip */
+.history-bar {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--s1);
+  display: none;
+}
+.history-bar.visible { display: block; }
+.history-title { font-size: .65rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+.history-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.history-scroll::-webkit-scrollbar { height: 3px; }
+.history-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.hist-thumb {
+  flex: 0 0 60px; height: 60px; border-radius: 8px;
+  overflow: hidden; border: 2px solid var(--border);
+  cursor: pointer; transition: border-color .2s;
+}
+.hist-thumb:hover { border-color: var(--accent); }
+.hist-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Special effects buttons */
+.effects-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.fx-btn {
+  padding: 9px 6px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--muted); font-size: .68rem;
+  cursor: pointer; font-family: inherit; transition: all .2s; text-align: center;
+  line-height: 1.4;
+}
+.fx-btn:hover { border-color: var(--accent2); color: var(--text); background: rgba(250,109,154,.08); }
+.fx-btn.active { border-color: var(--accent2); background: rgba(250,109,154,.15); color: var(--accent2); }
+
+/* Avatar crop controls */
+.avatar-controls { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.avatar-controls label { font-size: .72rem; color: var(--muted); }
+.shape-row { display: flex; gap: 6px; }
+.shape-btn {
+  flex: 1; padding: 6px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--muted); font-size: .7rem;
+  cursor: pointer; font-family: inherit; transition: all .2s; text-align: center;
+}
+.shape-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(124,109,250,.12); }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--accent); color: #fff;
+  padding: 11px 22px; border-radius: 10px;
+  font-size: .82rem; z-index: 9999;
+  box-shadow: 0 8px 28px rgba(0,0,0,.4);
+  transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+
+@media(max-width:700px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { height: auto; position: static; }
+  header { padding: 14px 16px; }
+  .canvas-wrap { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="glow gl"></div>
+<div class="glow gr"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">✦</div>
+    Photo Studio
+  </div>
+  <span class="badge">OFFLINE</span>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Upload -->
+    <div class="section">
+      <div class="section-title">Fotografia</div>
+      <div class="dropzone" id="dropzone"
+        onclick="dzClick()" ondragover="dzDragOver(event)"
+        ondragleave="dzDragLeave()" ondrop="dzDrop(event)">
+        <div class="dz-icon">🖼️</div>
+        <div class="dz-text">Presuňte fotografiu</div>
+        <div class="dz-sub">alebo kliknite pre výber</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="onFile(event)">
+    </div>
+
+    <!-- Presets -->
+    <div class="section">
+      <div class="section-title">Prednastavenia</div>
+      <div class="presets-grid" id="presetsGrid"></div>
+    </div>
+
+    <!-- Light -->
+    <div class="section">
+      <div class="section-title">Svetlo</div>
+      <div class="slider-row" id="lightSliders"></div>
+    </div>
+
+    <!-- Color -->
+    <div class="section">
+      <div class="section-title">Farba</div>
+      <div class="slider-row" id="colorSliders"></div>
+    </div>
+
+    <!-- Effects -->
+    <div class="section">
+      <div class="section-title">Efekty</div>
+      <div class="slider-row" id="effectSliders"></div>
+    </div>
+
+    <!-- Special Effects -->
+    <div class="section">
+      <div class="section-title">Umelecké efekty</div>
+      <div class="effects-grid">
+        <button class="fx-btn" id="fx_none"       onclick="setFx('none',this)">🚫<br>Žiadny</button>
+        <button class="fx-btn" id="fx_pencil"     onclick="setFx('pencil',this)">✏️<br>Ceruzka</button>
+        <button class="fx-btn" id="fx_sketch"     onclick="setFx('sketch',this)">🖊️<br>Skica</button>
+        <button class="fx-btn" id="fx_watercolor" onclick="setFx('watercolor',this)">🎨<br>Akvarely</button>
+        <button class="fx-btn" id="fx_popart"     onclick="setFx('popart',this)">🟡<br>Pop Art</button>
+        <button class="fx-btn" id="fx_pixel"      onclick="setFx('pixel',this)">👾<br>Pixel Art</button>
+        <button class="fx-btn" id="fx_emboss"     onclick="setFx('emboss',this)">🪨<br>Reliéf</button>
+        <button class="fx-btn" id="fx_neon"       onclick="setFx('neon',this)">💜<br>Neon</button>
+        <button class="fx-btn" id="fx_duotone"    onclick="setFx('duotone',this)">🎭<br>Duotón</button>
+        <button class="fx-btn" id="fx_thermal"    onclick="setFx('thermal',this)">🌡️<br>Termálny</button>
+      </div>
+      <div id="pixelSizeRow" style="display:none; flex-direction:column; gap:6px; margin-top:10px;">
+        <div class="slider-header">
+          <span class="slider-label">Veľkosť pixela</span>
+          <span class="slider-val" id="val_pixelSize">8</span>
+        </div>
+        <input type="range" id="sl_pixelSize" min="2" max="64" step="1" value="8"
+          oninput="onPixelSize(this.value)">
+      </div>
+    </div>
+
+    <!-- Avatar -->
+    <div class="section">
+      <div class="section-title">Avatar / Profilová fotka</div>
+      <div class="avatar-controls">
+        <label>Tvar výrezu:</label>
+        <div class="shape-row">
+          <button class="shape-btn active" id="shape_off"    onclick="setShape('off',this)">Vypnutý</button>
+          <button class="shape-btn"        id="shape_circle" onclick="setShape('circle',this)">⭕ Kruh</button>
+          <button class="shape-btn"        id="shape_square" onclick="setShape('square',this)">⬛ Štvorec</button>
+        </div>
+        <div id="avatarBgRow" style="display:none; flex-direction:column; gap:6px;">
+          <label>Farba pozadia:</label>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;" id="bgColorRow">
+            <div class="bg-swatch active" data-color="transparent" onclick="setBgColor('transparent',this)" style="width:24px;height:24px;border-radius:5px;border:2px solid var(--accent);background:repeating-conic-gradient(#aaa 0% 25%,#fff 0% 50%) 0 0/10px 10px;cursor:pointer;"></div>
+            <div class="bg-swatch" data-color="#ffffff" onclick="setBgColor('#ffffff',this)" style="width:24px;height:24px;border-radius:5px;border:2px solid var(--border);background:#ffffff;cursor:pointer;"></div>
+            <div class="bg-swatch" data-color="#000000" onclick="setBgColor('#000000',this)" style="width:24px;height:24px;border-radius:5px;border:2px solid var(--border);background:#000000;cursor:pointer;"></div>
+            <div class="bg-swatch" data-color="#7c6dfa" onclick="setBgColor('#7c6dfa',this)" style="width:24px;height:24px;border-radius:5px;border:2px solid var(--border);background:#7c6dfa;cursor:pointer;"></div>
+            <div class="bg-swatch" data-color="#fa6d9a" onclick="setBgColor('#fa6d9a',this)" style="width:24px;height:24px;border-radius:5px;border:2px solid var(--border);background:#fa6d9a;cursor:pointer;"></div>
+            <div class="bg-swatch" data-color="#1a1a2e" onclick="setBgColor('#1a1a2e',this)" style="width:24px;height:24px;border-radius:5px;border:2px solid var(--border);background:#1a1a2e;cursor:pointer;"></div>
+            <input type="color" value="#ff0000" oninput="setBgColor(this.value,null)" style="width:24px;height:24px;border:none;padding:0;border-radius:5px;cursor:pointer;background:none;" title="Vlastná farba">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset -->
+    <div class="section">
+      <button class="reset-btn" onclick="resetAll()">↺ Resetovať všetky úpravy</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button class="primary-btn" id="applyBtn" onclick="applyAndSave()" disabled>
+        ⬇ Stiahnuť upravenú fotografiu
+      </button>
+    </div>
+
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area">
+    <div class="canvas-toolbar">
+      <span class="tool-label">Zobrazenie:</span>
+      <div class="toggle-group">
+        <button class="toggle-btn on" onclick="setMode('edit',this)">Upravené</button>
+        <button class="toggle-btn" onclick="setMode('compare',this)">Porovnanie</button>
+        <button class="toggle-btn" onclick="setMode('original',this)">Originál</button>
+      </div>
+      <div class="spacer"></div>
+      <span class="img-info" id="imgInfo"></span>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="canvas-empty" id="emptyState">
+        <div class="big-icon">🎨</div>
+        <h2>Nahrajte fotografiu</h2>
+        <p>Presuňte obrázok na panel vľavo alebo kliknite na plochu pre výber súboru</p>
+      </div>
+      <div class="canvas-inner" id="canvasInner" style="display:none">
+        <canvas id="mainCanvas"></canvas>
+        <canvas id="compareCanvas"></canvas>
+        <div class="compare-line" id="compareLine">
+          <div class="compare-handle">⇔</div>
+        </div>
+        <div class="compare-lbl-l" id="lblL">ORIGINÁL</div>
+        <div class="compare-lbl-r" id="lblR">UPRAVENÉ ✦</div>
+      </div>
+    </div>
+
+    <div class="history-bar" id="historyBar">
+      <div class="history-title">História úprav</div>
+      <div class="history-scroll" id="histScroll"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────
+let originalImg = null;
+let historyStack = [];
+let displayMode = 'edit';
+let comparePos = 0.5;
+let isDraggingCompare = false;
+let activePreset = null;
+let renderRAF = null;
+let activeFx = 'none';
+let avatarShape = 'off';
+let avatarBgColor = 'transparent';
+let pixelSize = 8;
+
+const defaults = {
+  brightness: 0, contrast: 0, exposure: 0,
+  highlights: 0, shadows: 0,
+  saturation: 0, hue: 0, temperature: 0, tint: 0,
+  sharpness: 0, blur: 0, vignette: 0,
+  sepia: 0, grayscale: 0, grain: 0
+};
+let vals = {...defaults};
+
+// ─── SLIDER DEFINITIONS ──────────────────────────────────────
+const lightDefs = [
+  {id:'exposure',    label:'Expozícia',   min:-100, max:100, step:1},
+  {id:'brightness',  label:'Jas',         min:-100, max:100, step:1},
+  {id:'contrast',    label:'Kontrast',    min:-100, max:100, step:1},
+  {id:'highlights',  label:'Svetlé časti',min:-100, max:100, step:1},
+  {id:'shadows',     label:'Tiene',       min:-100, max:100, step:1},
+];
+const colorDefs = [
+  {id:'saturation',  label:'Saturácia',   min:-100, max:100, step:1},
+  {id:'temperature', label:'Teplota',     min:-100, max:100, step:1},
+  {id:'tint',        label:'Nádych',      min:-100, max:100, step:1},
+  {id:'hue',         label:'Odtieň',      min:-180, max:180, step:1},
+];
+const effectDefs = [
+  {id:'vignette',    label:'Vineta',      min:0,    max:100, step:1},
+  {id:'grain',       label:'Zrno',        min:0,    max:100, step:1},
+  {id:'blur',        label:'Rozmazanie',  min:0,    max:100, step:1},
+  {id:'sepia',       label:'Sépia',       min:0,    max:100, step:1},
+  {id:'grayscale',   label:'Čiernobiela', min:0,    max:100, step:1},
+];
+
+// ─── PRESETS ─────────────────────────────────────────────────
+const presets = [
+  {name:'Vivid',    icon:'🌈', v:{saturation:40,contrast:20,brightness:5}},
+  {name:'Vintage',  icon:'📷', v:{sepia:35,saturation:-20,contrast:15,grain:25,vignette:40,brightness:-5}},
+  {name:'B&W',      icon:'⬛', v:{grayscale:100,contrast:25}},
+  {name:'Warm',     icon:'🌅', v:{temperature:50,saturation:15,brightness:5}},
+  {name:'Cool',     icon:'❄️', v:{temperature:-50,saturation:10,brightness:5}},
+  {name:'Fade',     icon:'🌫️', v:{contrast:-30,brightness:15,saturation:-25}},
+  {name:'Matte',    icon:'🎞️', v:{contrast:-20,brightness:8,saturation:-15,grain:15,vignette:20}},
+  {name:'Drama',    icon:'⚡', v:{contrast:50,saturation:20,shadows:-30,highlights:20,vignette:50}},
+  {name:'Film Noir',icon:'🎬', v:{grayscale:100,contrast:60,vignette:70,grain:30}},
+];
+
+// ─── INIT ─────────────────────────────────────────────────────
+window.onload = () => {
+  buildSliders('lightSliders', lightDefs);
+  buildSliders('colorSliders', colorDefs);
+  buildSliders('effectSliders', effectDefs);
+  buildPresets();
+  setupCompareDrag();
+};
+
+function buildSliders(containerId, defs) {
+  const wrap = document.getElementById(containerId);
+  defs.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'slider-item';
+    row.innerHTML = `
+      <div class="slider-header">
+        <span class="slider-label">${d.label}</span>
+        <span class="slider-val" id="val_${d.id}">0</span>
+      </div>
+      <input type="range" id="sl_${d.id}"
+        min="${d.min}" max="${d.max}" step="${d.step}" value="0"
+        oninput="onSlider('${d.id}', this.value)">
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+function buildPresets() {
+  const grid = document.getElementById('presetsGrid');
+  presets.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.id = `preset_${i}`;
+    btn.innerHTML = `${p.icon}<br>${p.name}`;
+    btn.onclick = () => applyPreset(i);
+    grid.appendChild(btn);
+  });
+}
+
+// ─── DROP / UPLOAD ────────────────────────────────────────────
+function dzClick() {
+  if (!originalImg) document.getElementById('fileInput').click();
+}
+function dzDragOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('drag'); }
+function dzDragLeave()  { document.getElementById('dropzone').classList.remove('drag'); }
+function dzDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadFile(f);
+  else toast('Nahrajte obrázok (PNG, JPG, WebP)');
+}
+function onFile(e) { if (e.target.files[0]) loadFile(e.target.files[0]); }
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      originalImg = img;
+      document.getElementById('imgInfo').textContent = `${img.width} × ${img.height}px`;
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('canvasInner').style.display = 'inline-block';
+      document.getElementById('applyBtn').disabled = false;
+      // Thumb in dropzone
+      const dz = document.getElementById('dropzone');
+      dz.innerHTML = `<img src="${e.target.result}"><button class="dz-change" onclick="event.stopPropagation();resetImage()">✕</button>`;
+      dz.classList.add('has');
+      resetAll();
+      requestRender();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetImage() {
+  if (!confirm('Nahradiť obrázok?')) return;
+  originalImg = null;
+  const dz = document.getElementById('dropzone');
+  dz.innerHTML = `<div class="dz-icon">🖼️</div><div class="dz-text">Presuňte fotografiu</div><div class="dz-sub">alebo kliknite pre výber</div>`;
+  dz.classList.remove('has');
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('canvasInner').style.display = 'none';
+  document.getElementById('applyBtn').disabled = true;
+  document.getElementById('imgInfo').textContent = '';
+}
+
+// ─── SLIDERS ──────────────────────────────────────────────────
+function onSlider(id, v) {
+  vals[id] = parseFloat(v);
+  document.getElementById(`val_${id}`).textContent = v;
+  // Deactivate preset if manual change
+  if (activePreset !== null) {
+    document.getElementById(`preset_${activePreset}`).classList.remove('active');
+    activePreset = null;
+  }
+  requestRender();
+}
+
+function applyPreset(idx) {
+  if (activePreset !== null) document.getElementById(`preset_${activePreset}`).classList.remove('active');
+  if (activePreset === idx) { activePreset = null; resetAll(false); return; }
+  activePreset = idx;
+  document.getElementById(`preset_${idx}`).classList.add('active');
+  vals = {...defaults};
+  Object.entries(presets[idx].v).forEach(([k,v]) => { vals[k] = v; });
+  syncSlidersFromVals();
+  requestRender();
+}
+
+function syncSlidersFromVals() {
+  Object.keys(vals).forEach(id => {
+    const sl = document.getElementById(`sl_${id}`);
+    const vl = document.getElementById(`val_${id}`);
+    if (sl) { sl.value = vals[id]; }
+    if (vl) { vl.textContent = vals[id]; }
+  });
+}
+
+function resetAll(deactivatePreset = true) {
+  vals = {...defaults};
+  syncSlidersFromVals();
+  if (deactivatePreset && activePreset !== null) {
+    document.getElementById(`preset_${activePreset}`).classList.remove('active');
+    activePreset = null;
+  }
+  requestRender();
+}
+
+// ─── RENDERING ───────────────────────────────────────────────
+function requestRender() {
+  if (renderRAF) cancelAnimationFrame(renderRAF);
+  renderRAF = requestAnimationFrame(render);
+}
+
+function render() {
+  if (!originalImg) return;
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = originalImg.naturalWidth, H = originalImg.naturalHeight;
+  canvas.width = W; canvas.height = H;
+
+  if (displayMode === 'original') {
+    ctx.drawImage(originalImg, 0, 0);
+    return;
+  }
+
+  // Build CSS filter string
+  const b = 1 + (vals.brightness + vals.exposure) / 100;
+  const c = 1 + vals.contrast / 100;
+  const s = 1 + vals.saturation / 100;
+  const blur = vals.blur * 0.15;
+  const sep = vals.sepia / 100;
+  const gray = vals.grayscale / 100;
+
+  ctx.filter = [
+    `brightness(${Math.max(0.01, b)})`,
+    `contrast(${Math.max(0.01, c)})`,
+    `saturate(${Math.max(0, s)})`,
+    `hue-rotate(${vals.hue}deg)`,
+    `sepia(${sep})`,
+    `grayscale(${gray})`,
+    `blur(${blur}px)`
+  ].join(' ');
+  ctx.drawImage(originalImg, 0, 0);
+  ctx.filter = 'none';
+
+  // Highlights / Shadows via overlay
+  if (vals.highlights !== 0) {
+    const alpha = Math.abs(vals.highlights) / 300;
+    ctx.globalCompositeOperation = vals.highlights > 0 ? 'screen' : 'multiply';
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (vals.shadows !== 0) {
+    const alpha = Math.abs(vals.shadows) / 300;
+    ctx.globalCompositeOperation = vals.shadows > 0 ? 'screen' : 'multiply';
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // Temperature (warm/cool)
+  if (vals.temperature !== 0) {
+    const t = vals.temperature / 100;
+    if (t > 0) ctx.fillStyle = `rgba(255,140,0,${t * 0.2})`;
+    else       ctx.fillStyle = `rgba(0,120,255,${Math.abs(t) * 0.18})`;
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // Tint (green/magenta)
+  if (vals.tint !== 0) {
+    const t = vals.tint / 100;
+    if (t > 0) ctx.fillStyle = `rgba(255,0,200,${t * 0.12})`;
+    else       ctx.fillStyle = `rgba(0,255,100,${Math.abs(t) * 0.1})`;
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // Vignette
+  if (vals.vignette > 0) {
+    const v = vals.vignette / 100;
+    const grad = ctx.createRadialGradient(W/2, H/2, W*0.25, W/2, H/2, W*0.85);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, `rgba(0,0,0,${v * 0.85})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Grain
+  if (vals.grain > 0) {
+    const id = ctx.getImageData(0, 0, W, H);
+    const d = id.data, amt = vals.grain * 0.6;
+    for (let i = 0; i < d.length; i += 4) {
+      const n = (Math.random() - 0.5) * amt;
+      d[i]   = Math.min(255, Math.max(0, d[i]   + n));
+      d[i+1] = Math.min(255, Math.max(0, d[i+1] + n));
+      d[i+2] = Math.min(255, Math.max(0, d[i+2] + n));
+    }
+    ctx.putImageData(id, 0, 0);
+  }
+
+  // Special FX (pencil, sketch, watercolor, etc.)
+  applyFxEffect(ctx, W, H);
+
+  // Avatar shape (circle / square crop)
+  applyAvatarShape(ctx, W, H);
+
+  // Compare mode
+  if (displayMode === 'compare') renderCompare(W, H);
+}
+
+function renderCompare(W, H) {
+  const c2 = document.getElementById('compareCanvas');
+  c2.width = W; c2.height = H;
+  const ctx2 = c2.getContext('2d');
+  ctx2.drawImage(originalImg, 0, 0);
+
+  // Clip the edited canvas to right side
+  const mainC = document.getElementById('mainCanvas');
+  const mCtx = mainC.getContext('2d');
+  const full = mCtx.getImageData(0, 0, W, H);
+  const orig = ctx2.getImageData(0, 0, W, H);
+  const splitX = Math.round(W * comparePos);
+  // Merge: left = original, right = edited
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      if (x < splitX) {
+        full.data[i]   = orig.data[i];
+        full.data[i+1] = orig.data[i+1];
+        full.data[i+2] = orig.data[i+2];
+        full.data[i+3] = orig.data[i+3];
+      }
+    }
+  }
+  mCtx.putImageData(full, 0, 0);
+
+  // Position divider line
+  const canvas = document.getElementById('mainCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const line = document.getElementById('compareLine');
+  line.style.left = (comparePos * 100) + '%';
+}
+
+// ─── COMPARE DRAG ─────────────────────────────────────────────
+function setupCompareDrag() {
+  const line = document.getElementById('compareLine');
+  const wrap = document.getElementById('canvasInner');
+
+  const move = (clientX) => {
+    if (!isDraggingCompare) return;
+    const rect = wrap.getBoundingClientRect();
+    comparePos = Math.max(0.05, Math.min(0.95, (clientX - rect.left) / rect.width));
+    line.style.left = (comparePos * 100) + '%';
+    requestRender();
+  };
+
+  line.addEventListener('mousedown',  () => isDraggingCompare = true);
+  line.addEventListener('touchstart', () => isDraggingCompare = true, {passive:true});
+  document.addEventListener('mouseup',    () => isDraggingCompare = false);
+  document.addEventListener('touchend',   () => isDraggingCompare = false);
+  document.addEventListener('mousemove',  e => move(e.clientX));
+  document.addEventListener('touchmove',  e => move(e.touches[0].clientX), {passive:true});
+}
+
+// ─── MODES ───────────────────────────────────────────────────
+function setMode(mode, btn) {
+  displayMode = mode;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+
+  const c2 = document.getElementById('compareCanvas');
+  const line = document.getElementById('compareLine');
+  const lblL = document.getElementById('lblL');
+  const lblR = document.getElementById('lblR');
+
+  if (mode === 'compare') {
+    c2.style.display = 'none';
+    line.style.display = 'block';
+    lblL.style.display = lblR.style.display = 'block';
+  } else {
+    c2.style.display = 'none';
+    line.style.display = 'none';
+    lblL.style.display = lblR.style.display = 'none';
+  }
+  requestRender();
+}
+
+// ─── FX ──────────────────────────────────────────────────────
+function setFx(name, btn) {
+  activeFx = name;
+  document.querySelectorAll('.fx-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('pixelSizeRow').style.display = name === 'pixel' ? 'flex' : 'none';
+  requestRender();
+}
+
+function onPixelSize(v) {
+  pixelSize = parseInt(v);
+  document.getElementById('val_pixelSize').textContent = v;
+  requestRender();
+}
+
+// ─── AVATAR ──────────────────────────────────────────────────
+function setShape(shape, btn) {
+  avatarShape = shape;
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const bgRow = document.getElementById('avatarBgRow');
+  bgRow.style.display = shape !== 'off' ? 'flex' : 'none';
+  requestRender();
+}
+
+function setBgColor(color, el) {
+  avatarBgColor = color;
+  document.querySelectorAll('.bg-swatch').forEach(s => s.style.border = '2px solid var(--border)');
+  if (el) el.style.border = '2px solid var(--accent)';
+  requestRender();
+}
+
+// ─── SPECIAL EFFECTS ENGINE ──────────────────────────────────
+function applyFxEffect(ctx, W, H) {
+  if (activeFx === 'none') return;
+
+  const src = ctx.getImageData(0, 0, W, H);
+  const d = src.data;
+
+  if (activeFx === 'pencil' || activeFx === 'sketch') {
+    // Step 1: blur original to reduce noise, then grayscale
+    const tmp = document.createElement('canvas');
+    tmp.width = W; tmp.height = H;
+    const tc = tmp.getContext('2d');
+    tc.filter = 'blur(1.5px)';
+    tc.drawImage(originalImg, 0, 0);
+    tc.filter = 'none';
+    const blurred = tc.getImageData(0, 0, W, H);
+    const bd = blurred.data;
+    // Convert to grayscale
+    for (let i = 0; i < bd.length; i += 4) {
+      const g = bd[i]*0.299 + bd[i+1]*0.587 + bd[i+2]*0.114;
+      bd[i] = bd[i+1] = bd[i+2] = g;
+    }
+
+    // Step 2: Sobel edge detection on blurred grayscale
+    const out = ctx.createImageData(W, H);
+    const od = out.data;
+    for (let y = 1; y < H-1; y++) {
+      for (let x = 1; x < W-1; x++) {
+        const idx = (y*W+x)*4;
+        const tl = bd[((y-1)*W+(x-1))*4];
+        const tm = bd[((y-1)*W+x)*4];
+        const tr = bd[((y-1)*W+(x+1))*4];
+        const ml = bd[(y*W+(x-1))*4];
+        const mr = bd[(y*W+(x+1))*4];
+        const bl2 = bd[((y+1)*W+(x-1))*4];
+        const bm = bd[((y+1)*W+x)*4];
+        const br2 = bd[((y+1)*W+(x+1))*4];
+        const gx = -tl - 2*ml - bl2 + tr + 2*mr + br2;
+        const gy = -tl - 2*tm - tr + bl2 + 2*bm + br2;
+        // Amplify edges significantly
+        const mag = Math.min(255, Math.sqrt(gx*gx + gy*gy) * 2.5);
+        // White paper, dark pencil lines
+        const v = activeFx === 'sketch' ? Math.min(255, mag * 1.4) : mag;
+        od[idx] = od[idx+1] = od[idx+2] = Math.round(255 - v);
+        od[idx+3] = 255;
+      }
+    }
+    // Fill border pixels white
+    for (let x = 0; x < W; x++) {
+      const i0 = x*4, i1 = ((H-1)*W+x)*4;
+      out.data[i0]=out.data[i0+1]=out.data[i0+2]=255; out.data[i0+3]=255;
+      out.data[i1]=out.data[i1+1]=out.data[i1+2]=255; out.data[i1+3]=255;
+    }
+    ctx.putImageData(out, 0, 0);
+
+    if (activeFx === 'sketch') {
+      // Warm paper tint
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgba(200,170,120,0.25)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    return;
+  }
+
+  if (activeFx === 'watercolor') {
+    // Simplified watercolor: soften + boost saturation + paper texture
+    ctx.filter = 'blur(2px) saturate(1.6) contrast(0.85)';
+    ctx.drawImage(originalImg, 0, 0);
+    ctx.filter = 'none';
+    // Paper texture overlay
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(245,235,215,0.25)';
+    ctx.fillRect(0, 0, W, H);
+    // Edge lines
+    const tmp = document.createElement('canvas');
+    tmp.width = W; tmp.height = H;
+    const tc = tmp.getContext('2d');
+    tc.filter = 'blur(1px)';
+    tc.drawImage(originalImg, 0, 0);
+    tc.filter = 'none';
+    const id2 = tc.getImageData(0, 0, W, H);
+    const d2 = id2.data;
+    for (let i = 0; i < d2.length; i += 4) {
+      const g = d2[i]*0.299 + d2[i+1]*0.587 + d2[i+2]*0.114;
+      d2[i] = d2[i+1] = d2[i+2] = g;
+    }
+    tc.putImageData(id2, 0, 0);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(tmp, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    return;
+  }
+
+  if (activeFx === 'popart') {
+    const id = ctx.getImageData(0, 0, W, H);
+    const dd = id.data;
+    const palette = [
+      [255,230,0],[255,60,80],[0,180,255],[255,140,0],
+      [180,0,220],[0,200,100],[255,255,255],[20,20,20]
+    ];
+    for (let i = 0; i < dd.length; i += 4) {
+      let best = 0, bestDist = 1e9;
+      for (let p = 0; p < palette.length; p++) {
+        const dr = dd[i]-palette[p][0], dg = dd[i+1]-palette[p][1], db = dd[i+2]-palette[p][2];
+        const dist = dr*dr+dg*dg+db*db;
+        if (dist < bestDist) { bestDist = dist; best = p; }
+      }
+      dd[i] = palette[best][0]; dd[i+1] = palette[best][1]; dd[i+2] = palette[best][2];
+    }
+    ctx.putImageData(id, 0, 0);
+    return;
+  }
+
+  if (activeFx === 'pixel') {
+    const size = pixelSize;
+    const id = ctx.getImageData(0, 0, W, H);
+    const dd = id.data;
+    for (let y = 0; y < H; y += size) {
+      for (let x = 0; x < W; x += size) {
+        const i = (y*W+x)*4;
+        const r = dd[i], g = dd[i+1], b = dd[i+2];
+        for (let dy = 0; dy < size && y+dy < H; dy++) {
+          for (let dx = 0; dx < size && x+dx < W; dx++) {
+            const j = ((y+dy)*W+(x+dx))*4;
+            dd[j] = r; dd[j+1] = g; dd[j+2] = b;
+          }
+        }
+      }
+    }
+    ctx.putImageData(id, 0, 0);
+    return;
+  }
+
+  if (activeFx === 'emboss') {
+    const id = ctx.getImageData(0, 0, W, H);
+    const dd = id.data;
+    const out2 = ctx.createImageData(W, H);
+    const od2 = out2.data;
+    for (let y = 1; y < H-1; y++) {
+      for (let x = 1; x < W-1; x++) {
+        const i = (y*W+x)*4;
+        const tl = (y-1)*W+(x-1);
+        const br2 = (y+1)*W+(x+1);
+        for (let c = 0; c < 3; c++) {
+          od2[i+c] = Math.min(255, Math.max(0, dd[tl*4+c] - dd[br2*4+c] + 128));
+        }
+        od2[i+3] = 255;
+      }
+    }
+    ctx.putImageData(out2, 0, 0);
+    // Convert to grayscale
+    const id3 = ctx.getImageData(0, 0, W, H);
+    const d3 = id3.data;
+    for (let i = 0; i < d3.length; i += 4) {
+      const g = d3[i]*0.299 + d3[i+1]*0.587 + d3[i+2]*0.114;
+      d3[i] = d3[i+1] = d3[i+2] = g;
+    }
+    ctx.putImageData(id3, 0, 0);
+    return;
+  }
+
+  if (activeFx === 'neon') {
+    // Dark background + glowing edges
+    const id = ctx.getImageData(0, 0, W, H);
+    const dd = id.data;
+    // Darken
+    for (let i = 0; i < dd.length; i += 4) {
+      dd[i] *= 0.15; dd[i+1] *= 0.15; dd[i+2] *= 0.15;
+    }
+    ctx.putImageData(id, 0, 0);
+    // Draw glowing original on top
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(3px) saturate(3) brightness(1.5)';
+    ctx.drawImage(originalImg, 0, 0);
+    ctx.filter = 'blur(1px) saturate(4) brightness(2)';
+    ctx.drawImage(originalImg, 0, 0);
+    ctx.filter = 'none';
+    ctx.globalCompositeOperation = 'source-over';
+    return;
+  }
+
+  if (activeFx === 'duotone') {
+    const id = ctx.getImageData(0, 0, W, H);
+    const dd = id.data;
+    const dark = [20, 10, 60];    // deep purple
+    const light = [250, 109, 154]; // pink
+    for (let i = 0; i < dd.length; i += 4) {
+      const g = (dd[i]*0.299 + dd[i+1]*0.587 + dd[i+2]*0.114) / 255;
+      dd[i]   = dark[0] + (light[0]-dark[0]) * g;
+      dd[i+1] = dark[1] + (light[1]-dark[1]) * g;
+      dd[i+2] = dark[2] + (light[2]-dark[2]) * g;
+    }
+    ctx.putImageData(id, 0, 0);
+    return;
+  }
+
+  if (activeFx === 'thermal') {
+    const id = ctx.getImageData(0, 0, W, H);
+    const dd = id.data;
+    for (let i = 0; i < dd.length; i += 4) {
+      const g = (dd[i]*0.299 + dd[i+1]*0.587 + dd[i+2]*0.114) / 255;
+      // Black → purple → blue → cyan → green → yellow → red → white
+      let r, gr, b;
+      if (g < 0.125)      { r=0;   gr=0;   b=g/0.125*128; }
+      else if (g < 0.25)  { r=0;   gr=0;   b=128+(g-0.125)/0.125*127; }
+      else if (g < 0.375) { r=0;   gr=(g-0.25)/0.125*255; b=255; }
+      else if (g < 0.5)   { r=0;   gr=255; b=255-(g-0.375)/0.125*255; }
+      else if (g < 0.625) { r=(g-0.5)/0.125*255; gr=255; b=0; }
+      else if (g < 0.75)  { r=255; gr=255-(g-0.625)/0.125*255; b=0; }
+      else if (g < 0.875) { r=255; gr=0;   b=0; }
+      else                { r=255; gr=(g-0.875)/0.125*255; b=(g-0.875)/0.125*255; }
+      dd[i]=r; dd[i+1]=gr; dd[i+2]=b;
+    }
+    ctx.putImageData(id, 0, 0);
+    return;
+  }
+}
+
+// ─── AVATAR SHAPE ────────────────────────────────────────────
+function applyAvatarShape(ctx, W, H) {
+  if (avatarShape === 'off') return;
+
+  const size = Math.min(W, H);
+  const ox = (W - size) / 2;
+  const oy = (H - size) / 2;
+
+  // 1. Snapshot current canvas to an offscreen canvas
+  const snap = document.createElement('canvas');
+  snap.width = W; snap.height = H;
+  const sc = snap.getContext('2d');
+  sc.drawImage(ctx.canvas, 0, 0);
+
+  // 2. Clear main canvas
+  ctx.clearRect(0, 0, W, H);
+
+  // 3. Fill background
+  if (avatarBgColor !== 'transparent') {
+    ctx.fillStyle = avatarBgColor;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // 4. Draw clipped photo
+  ctx.save();
+  ctx.beginPath();
+  if (avatarShape === 'circle') {
+    ctx.arc(W / 2, H / 2, size / 2, 0, Math.PI * 2);
+  } else {
+    // Rounded square
+    const r = size * 0.1;
+    ctx.roundRect(ox, oy, size, size, r);
+  }
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(snap, 0, 0);
+  ctx.restore();
+}
+
+// ─── SAVE / DOWNLOAD ─────────────────────────────────────────
+function applyAndSave() {
+  if (!originalImg) return;
+  render();
+  const canvas = document.getElementById('mainCanvas');
+  // Use PNG for transparency support (avatar)
+  const fmt = avatarShape !== 'off' && avatarBgColor === 'transparent' ? 'image/png' : 'image/png';
+  const link = document.createElement('a');
+  link.download = avatarShape !== 'off' ? 'avatar.png' : 'photo-studio-edit.png';
+  link.href = canvas.toDataURL(fmt);
+  const thumb = canvas.toDataURL('image/jpeg', 0.4);
+  addHistory(thumb);
+  link.click();
+  toast('✦ Fotografia uložená!', 'success');
+}
+
+function addHistory(thumb) {
+  historyStack.unshift(thumb);
+  if (historyStack.length > 8) historyStack.pop();
+  const bar = document.getElementById('historyBar');
+  const scroll = document.getElementById('histScroll');
+  bar.classList.add('visible');
+  scroll.innerHTML = '';
+  historyStack.forEach(src => {
+    const d = document.createElement('div');
+    d.className = 'hist-thumb';
+    d.innerHTML = `<img src="${src}">`;
+    d.onclick = () => toast('História je len pre prehľad — kliknite Stiahnuť pre aktuálnu verziu');
+    scroll.appendChild(d);
+  });
+}
+
+// ─── TOAST ───────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = 'error') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'success' ? '#7c6dfa' : '#ff4d6d';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
