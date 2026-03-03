@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konfigurátor Altánku 3D - Profi Konštrukcia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --secondary: #27ae60; --bg: #ecf0f1; --text: #333; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); }
+        .sidebar { width: 320px; background: white; padding: 20px; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 10; display: flex; flex-direction: column; gap: 15px; }
+        .sidebar h2 { margin-top: 0; color: var(--primary); font-size: 1.5rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-weight: bold; font-size: 0.9rem; }
+        input[type="range"], select, input[type="text"], input[type="email"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .value-display { font-size: 0.85rem; color: #666; text-align: right; margin-top: -5px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; flex-direction: row; cursor: pointer; }
+        .checkbox-group input { width: auto; cursor: pointer; }
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; }
+        .top-bar { background: var(--primary); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .price-tag { font-size: 1.5rem; font-weight: bold; color: var(--secondary); background: white; padding: 5px 15px; border-radius: 20px; }
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn { background: transparent; color: white; border: 1px solid white; padding: 8px 15px; cursor: pointer; border-radius: 4px; transition: 0.3s; }
+        .tab-btn.active, .tab-btn:hover { background: white; color: var(--primary); }
+        .view-container { flex: 1; display: none; position: relative; width: 100%; height: 100%; background: #fff; }
+        .view-container.active { display: block; }
+        #canvas-3d { width: 100%; height: 100%; display: block; outline: none; }
+        .drawings-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 20px; padding: 20px; height: 100%; box-sizing: border-box; background: #fafafa; }
+        .drawing-box { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .drawing-box h3 { margin: 0 0 10px 0; font-size: 1rem; color: #555; }
+        canvas.drawing-canvas { max-width: 100%; max-height: 80%; border: 1px dashed #eee; }
+        .inquiry-form { max-width: 500px; margin: 40px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-submit { background: var(--secondary); color: white; border: none; padding: 12px; font-size: 1.1rem; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 15px; transition: 0.3s; }
+        .btn-submit:hover { background: #219653; }
+        #loading { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; z-index: 5; pointer-events: none; transition: opacity 0.3s; }
+        .highlight-box { background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; border-radius: 4px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Konfigurátor</h2>
+        <div class="form-group"><label>Šírka (m):</label><input type="range" id="width" min="2" max="6" step="0.5" value="3"><div class="value-display" id="width-val">3 m</div></div>
+        <div class="form-group"><label>Dĺžka (m):</label><input type="range" id="length" min="2" max="8" step="0.5" value="4"><div class="value-display" id="length-val">4 m</div></div>
+        <div class="form-group"><label>Výška stĺpov (m):</label><input type="range" id="height" min="2" max="3" step="0.1" value="2.2"><div class="value-display" id="height-val">2.2 m</div></div>
+        <div class="form-group"><label>Typ strechy:</label>
+            <select id="roof-type">
+                <option value="sedlova">Sedlová (Klasická)</option>
+                <option value="valbova">Valbová (Ihlanová)</option>
+                <option value="pultova">Pultová (Jednospádová)</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Krytina:</label>
+            <select id="roof-material">
+                <option value="plech">Plech</option>
+                <option value="skridla">Škridla</option>
+                <option value="sindel">Asfaltový šindeľ</option>
+                <option value="polykarbonat">Polykarbonát (priesvitný)</option>
+            </select>
+        </div>
+        
+        <div class="highlight-box">
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="hide-cover">
+                <label for="hide-cover" style="color:#856404;">Priehľadná krytina (zobraziť rošt)</label>
+            </div>
+        </div>
+
+        <hr style="width: 100%; border: 0.5px solid #eee;">
+        
+        <div class="form-group checkbox-group"><input type="checkbox" id="acc-railing"><label for="acc-railing">Zábradlie (medzi stĺpmi)</label></div>
+        <div class="form-group checkbox-group"><input type="checkbox" id="acc-furniture"><label for="acc-furniture">Lavičky a stôl</label></div>
+        <div class="form-group checkbox-group"><input type="checkbox" id="acc-lighting"><label for="acc-lighting">Osvetlenie (LED)</label></div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('3d')">3D Náhľad</button>
+                <button class="tab-btn" onclick="switchTab('2d')">2D Výkresy</button>
+                <button class="tab-btn" onclick="switchTab('form')">Dopyt</button>
+            </div>
+            <div class="price-tag" id="price-display">0 €</div>
+        </div>
+        
+        <div id="view-3d" class="view-container active">
+            <div id="loading">Generujem konštrukciu...</div>
+            <canvas id="canvas-3d"></canvas>
+        </div>
+        
+        <div id="view-2d" class="view-container">
+            <div class="drawings-grid">
+                <div class="drawing-box"><h3>Pôdorys</h3><canvas id="canvas-top" class="drawing-canvas"></canvas></div>
+                <div class="drawing-box"><h3>Predný pohľad</h3><canvas id="canvas-front" class="drawing-canvas"></canvas></div>
+                <div class="drawing-box"><h3>Bočný pohľad</h3><canvas id="canvas-side" class="drawing-canvas"></canvas></div>
+                <div class="drawing-box">
+                    <h3>Špecifikácia</h3>
+                    <div id="spec-text" style="font-size: 0.9rem; color: #333; line-height: 1.6;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="view-form" class="view-container">
+            <div class="inquiry-form">
+                <h2 style="margin-top:0; color: var(--primary);">Odoslať nezáväzný dopyt</h2>
+                <form id="contact-form">
+                    <div class="form-group" style="margin-bottom: 15px;"><label>Meno:</label><input type="text" required></div>
+                    <div class="form-group" style="margin-bottom: 15px;"><label>Email:</label><input type="email" required></div>
+                    <button type="submit" class="btn-submit">Odoslať dopyt</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = { width: 3, length: 4, height: 2.2, roofType: 'sedlova', roofMaterial: 'plech', hideCover: false, railing: false, furniture: false, lighting: false, postSize: 0.12, price: 0 };
+        const prices = { basePerM2: 120, roofTypes: { 'sedlova': 0, 'valbova': 200, 'pultova': -50 }, materials: { 'plech': 25, 'skridla': 45, 'sindel': 30, 'polykarbonat': 35 }, acc: { railing: 45, furniture: 250, lighting: 150 } };
+
+        ['width', 'length', 'height'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                state[id] = parseFloat(e.target.value); document.getElementById(`${id}-val`).innerText = `${state[id]} m`; updateAll();
+            });
+        });
+        document.getElementById('roof-type').addEventListener('change', (e) => { state.roofType = e.target.value; updateAll(); });
+        document.getElementById('roof-material').addEventListener('change', (e) => { state.roofMaterial = e.target.value; updateAll(); });
+        document.getElementById('hide-cover').addEventListener('change', (e) => { state.hideCover = e.target.checked; updateAll(); });
+        ['railing', 'furniture', 'lighting'].forEach(id => { document.getElementById(`acc-${id}`).addEventListener('change', (e) => { state[id] = e.target.checked; updateAll(); }); });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.view-container').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active'); document.getElementById(`view-${tabId}`).classList.add('active');
+            if(tabId === '2d') draw2D();
+        }
+
+        function calculatePrice() {
+            const area = state.width * state.length; const roofAreaMultiplier = state.roofType === 'pultova' ? 1.1 : 1.3;
+            let total = area * prices.basePerM2 + prices.roofTypes[state.roofType] + (area * roofAreaMultiplier * prices.materials[state.roofMaterial]);
+            if(state.railing) total += ((state.width + state.length) * 2 - 1.5) * prices.acc.railing;
+            if(state.furniture) total += prices.acc.furniture; if(state.lighting) total += prices.acc.lighting;
+            state.price = Math.round(total); document.getElementById('price-display').innerText = `${state.price.toLocaleString('sk-SK')} €`;
+        }
+
+        const canvas3d = document.getElementById('canvas-3d');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio); renderer.shadowMap.enabled = true;
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdce8f2);
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10); dirLight.castShadow = true; scene.add(dirLight);
+
+        const matWood = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+        const matWoodLight = new THREE.MeshLambertMaterial({ color: 0xa06f3b });
+        const matConcrete = new THREE.MeshLambertMaterial({ color: 0x95a5a6 });
+        const matSteel = new THREE.MeshLambertMaterial({ color: 0x34495e });
+        const roofColors = { 'plech': 0x444444, 'skridla': 0x8e2f1d, 'sindel': 0x2c3e50, 'polykarbonat': 0xecf0f1 };
+
+        let gazeboGroup = new THREE.Group(); scene.add(gazeboGroup);
+
+        function createBox(w, h, d, mat, x, y, z, rotZ = 0) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z); mesh.rotation.z = rotZ;
+            mesh.castShadow = true; mesh.receiveShadow = true; gazeboGroup.add(mesh); return mesh;
+        }
+
+        function createBeam(x1, y1, z1, x2, y2, z2, w, h, mat) {
+            const p1 = new THREE.Vector3(x1, y1, z1);
+            const p2 = new THREE.Vector3(x2, y2, z2);
+            const distance = p1.distanceTo(p2);
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, distance), mat);
+            mesh.position.copy(p1).lerp(p2, 0.5); 
+            mesh.lookAt(p2); 
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            gazeboGroup.add(mesh);
+            return mesh;
+        }
+
+        function build3DModel() {
+            while(gazeboGroup.children.length > 0){ const child = gazeboGroup.children[0]; gazeboGroup.remove(child); if(child.geometry) child.geometry.dispose(); }
+
+            const { width: W, length: L, height: H, postSize: ps } = state;
+            const plane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshLambertMaterial({ color: 0x27ae60 }));
+            plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; gazeboGroup.add(plane);
+
+            const corners = [[-W/2, -L/2], [W/2, -L/2], [-W/2, L/2], [W/2, L/2]];
+            if(L >= 5) corners.push([-W/2, 0], [W/2, 0]);
+
+            corners.forEach(pos => {
+                createBox(0.2, 0.4, 0.2, matConcrete, pos[0], 0.2, pos[1]);
+                createBox(0.13, 0.1, 0.13, matSteel, pos[0], 0.45, pos[1]);
+                createBox(ps, H, ps, matWood, pos[0], H/2 + 0.5, pos[1]);
+                const dirX = pos[0] < 0 ? 1 : -1; const dirZ = pos[1] < 0 ? 1 : -1;
+                createBox(0.08, 0.6, 0.08, matWood, pos[0] + dirX*0.3, H + 0.5 - 0.3, pos[1], Math.PI/4 * -dirX);
+                const vzpera = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08), matWood);
+                vzpera.position.set(pos[0], H + 0.5 - 0.3, pos[1] + dirZ*0.3); vzpera.rotation.x = Math.PI/4 * dirZ; gazeboGroup.add(vzpera);
+            });
+
+            const topY = H + 0.5;
+            const plateTopY = topY + ps/2; // Vrchná hrana obvodovej pomúrnice
+            
+            // Základný veniec (pomúrnice)
+            createBox(W + ps, ps, ps, matWood, 0, topY, -L/2); createBox(W + ps, ps, ps, matWood, 0, topY, L/2);
+            createBox(ps, ps, L + ps, matWood, -W/2, topY, 0); createBox(ps, ps, L + ps, matWood, W/2, topY, 0);
+
+            const roofOverhang = 0.5;
+            const rW = W + roofOverhang * 2; const rL = L + roofOverhang * 2;
+            const rafterH = 0.15;
+            const rafterW = 0.06;
+            const lathH = 0.03;
+            
+            const isTransparent = state.roofMaterial === 'polykarbonat' || state.hideCover;
+            const roofMatSettings = { color: roofColors[state.roofMaterial], side: THREE.DoubleSide, transparent: isTransparent, opacity: state.hideCover ? 0.2 : (state.roofMaterial === 'polykarbonat' ? 0.6 : 1), depthWrite: !isTransparent };
+            const roofMat = new THREE.MeshPhysicalMaterial(roofMatSettings);
+
+            // ==================== SEDLOVÁ STRECHA ====================
+            if(state.roofType === 'sedlova') {
+                const roofH = W * 0.3;
+                const angle = Math.atan2(roofH, W/2); 
+                
+                // Odsadenie stredu krokvy tak, aby sedela presne na pomúrnici (tzv. bird's mouth cut)
+                const rafterOffset = (rafterH / 2) * Math.cos(angle) + 0.02; // +0.02 nech je malý zárez
+                const yRidge = plateTopY + roofH + rafterOffset;
+                const yEave = plateTopY - roofOverhang * Math.tan(angle) + rafterOffset;
+                
+                const slopeLen = Math.sqrt(Math.pow(W/2 + roofOverhang, 2) + Math.pow((yRidge - yEave), 2));
+
+                // Rámovanie štítu (Gable framing) - iba pod prvou a poslednou krokvou
+                [-L/2, L/2].forEach(zPos => {
+                    createBox(0.08, roofH, 0.08, matWood, 0, plateTopY + roofH/2, zPos); // Kráľovský stĺpik
+                    
+                    const studSpacing = 0.6;
+                    for(let x = studSpacing; x < W/2 - 0.1; x += studSpacing) {
+                        const h = (W/2 - x) * Math.tan(angle); // Výška stĺpika po spodok krokvy
+                        if(h > 0.05) {
+                            createBox(0.06, h, 0.06, matWoodLight, x, plateTopY + h/2, zPos);
+                            createBox(0.06, h, 0.06, matWoodLight, -x, plateTopY + h/2, zPos);
+                        }
+                    }
+                });
+                
+                // Krokvy
+                const numRafters = Math.ceil(rL / 0.9) + 1;
+                const rafterSpacing = rL / (numRafters - 1);
+                for(let i=0; i<numRafters; i++) {
+                    const zPos = -rL/2 + i * rafterSpacing;
+                    createBeam(-(W/2 + roofOverhang), yEave, zPos, 0, yRidge, zPos, rafterW, rafterH, matWoodLight); // Ľavá
+                    createBeam(W/2 + roofOverhang, yEave, zPos, 0, yRidge, zPos, rafterW, rafterH, matWoodLight); // Pravá
+                }
+
+                // Latovanie (uložené NA krokve)
+                const numLaths = Math.floor(slopeLen / 0.35) + 1;
+                for(let i=0; i<=numLaths; i++) {
+                    const t = i / numLaths;
+                    const xL = THREE.MathUtils.lerp(-(W/2 + roofOverhang), 0, t); 
+                    const xR = THREE.MathUtils.lerp(W/2 + roofOverhang, 0, t);
+                    const yCenter = THREE.MathUtils.lerp(yEave, yRidge, t);
+                    const yLath = yCenter + rafterH/2 + lathH/2; // Presne na vrchu krokvy
+                    
+                    createBeam(xL, yLath, -rL/2, xL, yLath, rL/2, 0.05, lathH, matWoodLight); 
+                    createBeam(xR, yLath, -rL/2, xR, yLath, rL/2, 0.05, lathH, matWoodLight);
+                }
+
+                // Krytina
+                const roofGeo = new THREE.BoxGeometry(slopeLen, 0.02, rL);
+                const yCover = (yEave + yRidge)/2 + rafterH/2 + lathH + 0.01; // Na latách
+                const cx = (W/2 + roofOverhang) / 2;
+                
+                const roof1 = new THREE.Mesh(roofGeo, roofMat); roof1.position.set(-cx, yCover, 0); roof1.rotation.z = angle; gazeboGroup.add(roof1);
+                const roof2 = new THREE.Mesh(roofGeo, roofMat); roof2.position.set(cx, yCover, 0); roof2.rotation.z = -angle; gazeboGroup.add(roof2);
+
+            // ==================== VALBOVÁ STRECHA ====================
+            } else if (state.roofType === 'valbova') {
+                const roofH = Math.min(W, L) * 0.4;
+                const runMax = Math.min(rW, rL) / 2;
+                const isLongZ = rL > rW;
+                const ridgeLen = Math.abs(rL - rW);
+                const r0x = isLongZ ? 0 : -ridgeLen/2; const r0z = isLongZ ? -ridgeLen/2 : 0;
+                const r1x = isLongZ ? 0 : ridgeLen/2; const r1z = isLongZ ? ridgeLen/2 : 0;
+
+                const rafterOffset = (rafterH / 2) * Math.cos(Math.atan2(roofH, runMax)) + 0.02;
+                const yRidge = plateTopY + roofH + rafterOffset;
+                const yPlate = plateTopY + rafterOffset;
+
+                if (ridgeLen > 0.1) {
+                    createBeam(r0x, yRidge, r0z, r1x, yRidge, r1z, 0.08, rafterH, matWoodLight);
+                } else {
+                    createBox(0.12, roofH, 0.12, matWood, 0, plateTopY + roofH/2, 0);
+                }
+                
+                const pFL = {x: -rW/2, z: -rL/2}; const pFR = {x: rW/2, z: -rL/2};
+                const pBL = {x: -rW/2, z: rL/2};  const pBR = {x: rW/2, z: rL/2};
+                let tFL, tFR, tBL, tBR;
+
+                if (isLongZ) {
+                    tFL = {x: r0x, z: r0z}; tFR = {x: r0x, z: r0z}; 
+                    tBL = {x: r1x, z: r1z}; tBR = {x: r1x, z: r1z}; 
+                } else {
+                    tFL = {x: r0x, z: r0z}; tBL = {x: r0x, z: r0z}; 
+                    tFR = {x: r1x, z: r1z}; tBR = {x: r1x, z: r1z}; 
+                }
+
+                createBeam(pFL.x, yPlate, pFL.z, tFL.x, yRidge, tFL.z, 0.08, rafterH, matWoodLight);
+                createBeam(pFR.x, yPlate, pFR.z, tFR.x, yRidge, tFR.z, 0.08, rafterH, matWoodLight);
+                createBeam(pBL.x, yPlate, pBL.z, tBL.x, yRidge, tBL.z, 0.08, rafterH, matWoodLight);
+                createBeam(pBR.x, yPlate, pBR.z, tBR.x, yRidge, tBR.z, 0.08, rafterH, matWoodLight);
+
+                const rafterSpacing = 0.9;
+                const numZ = Math.ceil(rL / rafterSpacing);
+                const actualSpacingZ = rL / numZ;
+                for(let i = 1; i < numZ; i++) {
+                    const z = -rL/2 + i * actualSpacingZ;
+                    const d = Math.min(rW/2, rL/2 - Math.abs(z));
+                    const h = d * (roofH / runMax);
+                    createBeam(-rW/2, yPlate, z, -rW/2 + d, yPlate + h, z, rafterW, rafterH, matWoodLight); 
+                    createBeam(rW/2, yPlate, z, rW/2 - d, yPlate + h, z, rafterW, rafterH, matWoodLight); 
+                }
+
+                const numX = Math.ceil(rW / rafterSpacing);
+                const actualSpacingX = rW / numX;
+                for(let i = 1; i < numX; i++) {
+                    const x = -rW/2 + i * actualSpacingX;
+                    const d = Math.min(rL/2, rW/2 - Math.abs(x));
+                    const h = d * (roofH / runMax);
+                    createBeam(x, yPlate, -rL/2, x, yPlate + h, -rL/2 + d, rafterW, rafterH, matWoodLight); 
+                    createBeam(x, yPlate, rL/2, x, yPlate + h, rL/2 - d, rafterW, rafterH, matWoodLight); 
+                }
+
+                const slopeLenV = Math.sqrt(Math.pow(runMax, 2) + Math.pow(roofH, 2));
+                const numLathsV = Math.floor(slopeLenV / 0.35) + 1;
+                for(let i=1; i<=numLathsV; i++) {
+                    const t = i / numLathsV;
+                    const cw = rW * (1 - t) + (isLongZ ? 0 : ridgeLen) * t;
+                    const cl = rL * (1 - t) + (isLongZ ? ridgeLen : 0) * t;
+                    const yLath = yPlate + t * roofH + rafterH/2 + lathH/2;
+                    createBeam(-cw/2, yLath, -cl/2, cw/2, yLath, -cl/2, 0.05, lathH, matWoodLight); createBeam(-cw/2, yLath, cl/2, cw/2, yLath, cl/2, 0.05, lathH, matWoodLight);
+                    createBeam(-cw/2, yLath, -cl/2, -cw/2, yLath, cl/2, 0.05, lathH, matWoodLight); createBeam(cw/2, yLath, -cl/2, cw/2, yLath, cl/2, 0.05, lathH, matWoodLight);
+                }
+
+                const roofYOffset = rafterH/2 + lathH;
+                const vertices = new Float32Array([
+                    -rW/2, yPlate+roofYOffset, -rL/2, rW/2, yPlate+roofYOffset, -rL/2, r0x, yRidge+roofYOffset, r0z,  
+                    rW/2, yPlate+roofYOffset, -rL/2, r1x, yRidge+roofYOffset, r1z, r0x, yRidge+roofYOffset, r0z,
+                    rW/2, yPlate+roofYOffset, rL/2, -rW/2, yPlate+roofYOffset, rL/2, r1x, yRidge+roofYOffset, r1z,   
+                    -rW/2, yPlate+roofYOffset, rL/2, r0x, yRidge+roofYOffset, r0z, r1x, yRidge+roofYOffset, r1z,
+                    -rW/2, yPlate+roofYOffset, rL/2, -rW/2, yPlate+roofYOffset, -rL/2, r0x, yRidge+roofYOffset, r0z, 
+                    -rW/2, yPlate+roofYOffset, rL/2, r0x, yRidge+roofYOffset, r0z, r1x, yRidge+roofYOffset, r1z,
+                    rW/2, yPlate+roofYOffset, -rL/2, rW/2, yPlate+roofYOffset, rL/2, r1x, yRidge+roofYOffset, r1z,   
+                    rW/2, yPlate+roofYOffset, -rL/2, r1x, yRidge+roofYOffset, r1z, r0x, yRidge+roofYOffset, r0z
+                ]);
+                const roofGeo = new THREE.BufferGeometry(); roofGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3)); roofGeo.computeVertexNormals();
+                const roofMesh = new THREE.Mesh(roofGeo, roofMat); gazeboGroup.add(roofMesh);
+
+            // ==================== PULTOVÁ STRECHA ====================
+            } else if (state.roofType === 'pultova') {
+                const roofH = 0.5;
+                const angle = Math.atan2(roofH, L);
+                
+                // Konštrukcia vyvýšenej prednej časti (Front Z = L/2)
+                const frontPlateTopY = plateTopY + roofH;
+                createBox(W + ps, ps, ps, matWood, 0, topY + roofH, L/2); // Zvýšená väznica
+                
+                // Zvislé stĺpiky (Studs) pod prednou väznicou
+                const numStudsP = Math.max(2, Math.ceil(W / 1.5) + 1);
+                for(let i=0; i<numStudsP; i++) {
+                    const xPos = -W/2 + i * (W / (numStudsP - 1));
+                    createBox(ps, roofH - ps, ps, matWood, xPos, topY + ps/2 + (roofH - ps)/2, L/2);
+                }
+
+                // Bočné šikmé pomúrnice (prepájajú zadnú a prednú stenu)
+                createBeam(-W/2, plateTopY, -L/2, -W/2, frontPlateTopY, L/2, ps, ps, matWood); 
+                createBeam(W/2, plateTopY, -L/2, W/2, frontPlateTopY, L/2, ps, ps, matWood);   
+
+                // Výpočet pre krokvy (zohľadnenie presahu a posunu nahor na dosadnutie)
+                const rafterOffset = (rafterH / 2) * Math.cos(angle) + 0.02; // Posun nahor na trám
+                
+                const yBackEave = plateTopY + rafterOffset - roofOverhang * Math.tan(angle);
+                const yFrontEave = frontPlateTopY + rafterOffset + roofOverhang * Math.tan(angle);
+                const slopeLenP = Math.sqrt(Math.pow(rL, 2) + Math.pow((yFrontEave - yBackEave), 2));
+
+                const numRafters = Math.ceil(rW / 0.9) + 1;
+                const rafterSpacing = rW / (numRafters - 1);
+                for(let i=0; i<numRafters; i++) {
+                    const xPos = -rW/2 + i * rafterSpacing;
+                    createBeam(xPos, yBackEave, -rL/2, xPos, yFrontEave, rL/2, rafterW, rafterH, matWoodLight);
+                }
+
+                // Latovanie
+                const numLathsP = Math.floor(slopeLenP / 0.35) + 1;
+                for(let i=0; i<=numLathsP; i++) {
+                    const t = i / numLathsP;
+                    const z = THREE.MathUtils.lerp(-rL/2, rL/2, t);
+                    const yCenter = THREE.MathUtils.lerp(yBackEave, yFrontEave, t);
+                    const yLath = yCenter + rafterH/2 + lathH/2;
+                    createBeam(-rW/2, yLath, z, rW/2, yLath, z, 0.05, lathH, matWoodLight);
+                }
+
+                // Krytina
+                const roofGeo = new THREE.BoxGeometry(rW, 0.02, slopeLenP);
+                const roof = new THREE.Mesh(roofGeo, roofMat);
+                roof.position.set(0, (yBackEave + yFrontEave)/2 + rafterH/2 + lathH + 0.01, 0); 
+                roof.rotation.x = -angle; 
+                gazeboGroup.add(roof);
+            }
+
+            if(state.railing) {
+                createBox(0.05, 0.1, L, matWood, -W/2, 0.9, 0); createBox(0.05, 0.1, L, matWood, W/2, 0.9, 0); createBox(W, 0.1, 0.05, matWood, 0, 0.9, -L/2);
+                for(let i=0; i<L; i+=0.3) { createBox(0.03, 0.4, 0.03, matWoodLight, -W/2, 0.7, -L/2 + i); createBox(0.03, 0.4, 0.03, matWoodLight, W/2, 0.7, -L/2 + i); }
+                for(let i=0.3; i<W; i+=0.3) { createBox(0.03, 0.4, 0.03, matWoodLight, -W/2 + i, 0.7, -L/2); }
+            }
+            if(state.furniture) {
+                createBox(1.5, 0.05, 0.8, matWoodLight, 0, 0.75, 0); createBox(0.1, 0.7, 0.1, matWood, -0.6, 0.4, 0); createBox(0.1, 0.7, 0.1, matWood, 0.6, 0.4, 0);
+                createBox(1.5, 0.05, 0.4, matWoodLight, 0, 0.45, 0.7); createBox(0.1, 0.4, 0.1, matWood, -0.6, 0.25, 0.7); createBox(0.1, 0.4, 0.1, matWood, 0.6, 0.25, 0.7);
+                createBox(1.5, 0.05, 0.4, matWoodLight, 0, 0.45, -0.7); createBox(0.1, 0.4, 0.1, matWood, -0.6, 0.25, -0.7); createBox(0.1, 0.4, 0.1, matWood, 0.6, 0.25, -0.7);
+            }
+            if(state.lighting) {
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffddaa }));
+                bulb.position.set(0, topY - 0.1, 0); gazeboGroup.add(bulb);
+                const pLight = new THREE.PointLight(0xffddaa, 1, 5); pLight.position.set(0, topY - 0.2, 0); gazeboGroup.add(pLight);
+            }
+        }
+
+        function resize3D() { const w = document.getElementById('view-3d').clientWidth; const h = document.getElementById('view-3d').clientHeight || 500; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+
+        function drawDimensionLine(ctx, startX, startY, endX, endY, label) {
+            ctx.beginPath(); ctx.lineWidth = 1; ctx.strokeStyle = 'red'; ctx.moveTo(startX, startY); ctx.lineTo(endX, endY); ctx.stroke();
+            ctx.fillStyle = 'red'; ctx.font = '12px Arial'; ctx.textAlign = 'center'; ctx.fillText(label, (startX + endX) / 2, (startY + endY) / 2 - 5);
+        }
+        function drawTextCentered(ctx, text, x, y, font, color) { ctx.font = font || '16px Arial'; ctx.fillStyle = color || '#333'; ctx.textAlign = 'center'; ctx.fillText(text, x, y); }
+
+        function draw2D() {
+            const scale = 30; const cx = 200, cy = 150; const roofOverhang = 0.5;
+            ['canvas-top', 'canvas-front', 'canvas-side'].forEach(id => {
+                const c = document.getElementById(id); c.width = 400; c.height = 300;
+                const ctx = c.getContext('2d'); ctx.clearRect(0, 0, 400, 300); ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.fillStyle = '#f0f0f0';
+            });
+
+            const ctxT = document.getElementById('canvas-top').getContext('2d');
+            const p = state.postSize * scale; const wPx = state.width * scale; const lPx = state.length * scale; const overPx = roofOverhang * scale;
+            
+            ctxT.strokeRect(cx - wPx/2, cy - lPx/2, wPx, lPx); ctxT.fillStyle = '#8b5a2b';
+            ctxT.fillRect(cx - wPx/2 - p/2, cy - lPx/2 - p/2, p, p); ctxT.fillRect(cx + wPx/2 - p/2, cy - lPx/2 - p/2, p, p);
+            ctxT.fillRect(cx - wPx/2 - p/2, cy + lPx/2 - p/2, p, p); ctxT.fillRect(cx + wPx/2 - p/2, cy + lPx/2 - p/2, p, p);
+            ctxT.setLineDash([5, 5]); ctxT.strokeRect(cx - wPx/2 - overPx, cy - lPx/2 - overPx, wPx + overPx*2, lPx + overPx*2); ctxT.setLineDash([]);
+            
+            drawDimensionLine(ctxT, cx - wPx/2, cy + lPx/2 + overPx + 20, cx + wPx/2, cy + lPx/2 + overPx + 20, `ŠÍRKA: ${state.width}m`);
+            drawDimensionLine(ctxT, cx + wPx/2 + overPx + 20, cy - lPx/2, cx + wPx/2 + overPx + 20, cy + lPx/2, `DĹŽKA: ${state.length}m`);
+            drawTextCentered(ctxT, 'PÔDORYS', cx, 20);
+
+            const ctxF = document.getElementById('canvas-front').getContext('2d');
+            const hPx = state.height * scale; const roofH = (state.roofType === 'sedlova' ? state.width*0.3 : (state.roofType==='valbova' ? state.width*0.4 : 0.5));
+            const roofHPx = roofH * scale; const baseFY = cy + hPx/2 + 20; 
+            const ridgeLenPx = Math.abs(state.length - state.width) * scale;
+            
+            ctxF.beginPath(); ctxF.moveTo(cx - wPx/2 - overPx - 20, baseFY); ctxF.lineTo(cx + wPx/2 + overPx + 20, baseFY); ctxF.stroke();
+            ctxF.strokeRect(cx - wPx/2, baseFY - hPx, p, hPx); ctxF.fillRect(cx - wPx/2 - p/4, baseFY - p/4, p + p/2, p/4);
+            ctxF.strokeRect(cx + wPx/2 - p, baseFY - hPx, p, hPx); ctxF.fillRect(cx + wPx/2 - p - p/4, baseFY - p/4, p + p/2, p/4);
+            ctxF.strokeRect(cx - wPx/2 - p, baseFY - hPx - p, wPx + p*2, p);
+            ctxF.beginPath(); ctxF.moveTo(cx - wPx/2 + p, baseFY - hPx); ctxF.lineTo(cx - wPx/2 + p + 10, baseFY - hPx - 10); ctxF.stroke(); 
+            ctxF.beginPath(); ctxF.moveTo(cx + wPx/2 - p, baseFY - hPx); ctxF.lineTo(cx + wPx/2 - p - 10, baseFY - hPx - 10); ctxF.stroke();
+            
+            ctxF.beginPath();
+            if(state.roofType === 'pultova') {
+                ctxF.strokeRect(cx - wPx/2, baseFY - hPx - p - roofHPx, p, roofHPx); // Zadný stĺp L
+                ctxF.strokeRect(cx + wPx/2 - p, baseFY - hPx - p - roofHPx, p, roofHPx); // Zadný stĺp R
+                ctxF.strokeRect(cx - wPx/2 - p, baseFY - hPx - p - roofHPx, wPx + p*2, p); // Zadná horná väznica
+                ctxF.fillStyle = '#f0f0f0'; // Krytie
+                ctxF.fillRect(cx - wPx/2 - overPx, baseFY - hPx - p - 10, wPx + overPx*2, 20); // Hrana strechy
+                ctxF.strokeRect(cx - wPx/2 - overPx, baseFY - hPx - p - 10, wPx + overPx*2, 20);
+            } else if (state.roofType === 'valbova') {
+                const isLongX = state.width > state.length;
+                ctxF.moveTo(cx - wPx/2 - overPx, baseFY - hPx - p);
+                if (isLongX) {
+                    ctxF.lineTo(cx - ridgeLenPx/2, baseFY - hPx - p - roofHPx); ctxF.lineTo(cx + ridgeLenPx/2, baseFY - hPx - p - roofHPx);
+                } else {
+                    ctxF.lineTo(cx, baseFY - hPx - p - roofHPx);
+                }
+                ctxF.lineTo(cx + wPx/2 + overPx, baseFY - hPx - p);
+            } else {
+                ctxF.moveTo(cx - wPx/2 - overPx, baseFY - hPx - p); ctxF.lineTo(cx, baseFY - hPx - p - roofHPx); ctxF.lineTo(cx + wPx/2 + overPx, baseFY - hPx - p);
+            }
+            if(state.roofType !== 'pultova') { ctxF.closePath(); ctxF.stroke(); }
+            
+            drawDimensionLine(ctxF, cx + wPx/2 + 30, baseFY - hPx, cx + wPx/2 + 30, baseFY, `VÝŠKA PO PREKLAD: ${state.height}m`);
+            drawDimensionLine(ctxF, cx + wPx/2 + 60, baseFY - hPx - p - roofHPx, cx + wPx/2 + 60, baseFY, `CELKOVÁ VÝŠKA: ${(state.height + roofH).toFixed(1)}m`);
+            drawTextCentered(ctxF, 'PREDNÝ POHĽAD', cx, 20);
+
+            const ctxS = document.getElementById('canvas-side').getContext('2d');
+            const sW_Px = state.length * scale;
+            
+            ctxS.beginPath(); ctxS.moveTo(cx - sW_Px/2 - overPx - 20, baseFY); ctxS.lineTo(cx + sW_Px/2 + overPx + 20, baseFY); ctxS.stroke();
+            ctxS.strokeRect(cx - sW_Px/2, baseFY - hPx, p, hPx); ctxS.fillRect(cx - sW_Px/2 - p/4, baseFY - p/4, p + p/2, p/4);
+            ctxS.strokeRect(cx + sW_Px/2 - p, baseFY - hPx, p, hPx); ctxS.fillRect(cx + sW_Px/2 - p - p/4, baseFY - p/4, p + p/2, p/4);
+            ctxS.strokeRect(cx - sW_Px/2 - p, baseFY - hPx - p, sW_Px + p*2, p);
+            
+            ctxS.beginPath();
+            if(state.roofType === 'pultova') {
+                ctxS.strokeRect(cx + sW_Px/2 - p, baseFY - hPx - p - roofHPx, p, roofHPx); // Zobrazenie podpory vzadu
+                ctxS.moveTo(cx - sW_Px/2 - overPx, baseFY - hPx - p); // Nízká predná časť
+                ctxS.lineTo(cx + sW_Px/2 + overPx, baseFY - hPx - p - roofHPx); // Vysoká zadná časť
+                ctxS.lineTo(cx + sW_Px/2 + overPx, baseFY - hPx - p);
+                ctxS.closePath(); ctxS.stroke();
+            } else if (state.roofType === 'valbova') {
+                const isLongZ = state.length > state.width;
+                ctxS.moveTo(cx - sW_Px/2 - overPx, baseFY - hPx - p);
+                if (isLongZ) {
+                    ctxS.lineTo(cx - ridgeLenPx/2, baseFY - hPx - p - roofHPx); ctxS.lineTo(cx + ridgeLenPx/2, baseFY - hPx - p - roofHPx);
+                } else {
+                    ctxS.lineTo(cx, baseFY - hPx - p - roofHPx);
+                }
+                ctxS.lineTo(cx + sW_Px/2 + overPx, baseFY - hPx - p);
+                ctxS.closePath(); ctxS.stroke();
+            } else {
+                ctxS.strokeRect(cx - sW_Px/2 - overPx, baseFY - hPx - p - roofHPx, sW_Px + overPx*2, roofHPx);
+            }
+            
+            drawDimensionLine(ctxS, cx + sW_Px/2 + 30, baseFY - hPx, cx + sW_Px/2 + 30, baseFY, `VÝŠKA PO PREKLAD: ${state.height}m`);
+            drawTextCentered(ctxS, 'BOČNÝ POHĽAD', cx, 20);
+
+            document.getElementById('spec-text').innerHTML = `
+                <b>Rozmery pôdorysu:</b> ${state.width} x ${state.length} m<br>
+                <b>Výška po väznicu:</b> ${state.height} m<br>
+                <b>Typ strechy:</b> ${document.getElementById('roof-type').options[document.getElementById('roof-type').selectedIndex].text}<br>
+                <b>Krytina:</b> ${document.getElementById('roof-material').options[document.getElementById('roof-material').selectedIndex].text}<br>
+                <b>Konštrukcia:</b> Stĺpy 120x120mm, Krokvy á 90cm, Latovanie á 35cm.
+            `;
+        }
+
+        function updateAll() {
+            document.getElementById('loading').style.opacity = '1';
+            setTimeout(() => { build3DModel(); calculatePrice(); if(document.getElementById('view-2d').classList.contains('active')) draw2D(); document.getElementById('loading').style.opacity = '0'; }, 50);
+        }
+        window.onload = () => { camera.position.set(6, 5, 8); camera.lookAt(0, 2, 0); window.addEventListener('resize', resize3D); resize3D(); updateAll(); animate(); setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 1000); };
+    </script>
+</body>
+</html>
