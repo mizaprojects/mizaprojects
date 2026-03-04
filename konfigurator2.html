@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konfigurátor Altánku</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark: #1a1a1a;
+            --panel: #222222;
+            --panel2: #2a2a2a;
+            --border: #333333;
+            --accent: #c8a96e;
+            --accent2: #e8c98e;
+            --text: #e8e4de;
+            --muted: #888;
+            --green: #4caf7d;
+            --red: #e07060;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--dark);
+            color: var(--text);
+        }
+
+        /* ─── SIDEBAR ─── */
+        .sidebar {
+            width: 300px;
+            min-width: 300px;
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+        }
+
+        .sidebar-header {
+            padding: 22px 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.35rem;
+            color: var(--accent);
+            letter-spacing: 0.02em;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 3px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-body::-webkit-scrollbar { width: 4px; }
+        .sidebar-body::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .section-title {
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        /* ─── SLIDERS ─── */
+        .slider-group { display: flex; flex-direction: column; gap: 12px; }
+
+        .slider-item { display: flex; flex-direction: column; gap: 6px; }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .slider-label span:first-child {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .slider-val {
+            font-size: 0.78rem;
+            color: var(--accent);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--accent2);
+            transform: scale(1.15);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* ─── BUTTON GROUPS ─── */
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn-opt {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 10px;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-align: center;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-opt:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .btn-opt.active {
+            background: rgba(200, 169, 110, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .btn-opt .opt-icon {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 3px;
+        }
+
+        /* ─── TOGGLES ─── */
+        .toggle-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color 0.18s;
+        }
+
+        .toggle-item:hover { border-color: #555; }
+        .toggle-item.active { border-color: var(--accent); }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        .toggle-label .t-icon { font-size: 1rem; }
+
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            background: var(--border);
+            border-radius: 9px;
+            position: relative;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toggle-item.active .toggle-switch { background: var(--accent); }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            transition: left 0.2s;
+        }
+
+        .toggle-item.active .toggle-switch::after { left: 17px; }
+
+        /* Transparent cover toggle — special amber */
+        .toggle-item.transparent-toggle { border-color: rgba(200,169,110,0.3); background: rgba(200,169,110,0.05); }
+        .toggle-item.transparent-toggle .toggle-label { color: var(--accent2); }
+
+        /* ─── DIVIDER ─── */
+        .divider { height: 1px; background: var(--border); }
+
+        /* ─── MAIN CONTENT ─── */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ─── TOP BAR ─── */
+        .top-bar {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            gap: 16px;
+        }
+
+        .tabs { display: flex; gap: 4px; }
+
+        .tab-btn {
+            background: transparent;
+            color: var(--muted);
+            border: none;
+            padding: 6px 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            transition: all 0.18s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn .tab-icon { font-size: 0.9rem; }
+        .tab-btn:hover { background: var(--panel2); color: var(--text); }
+        .tab-btn.active { background: rgba(200,169,110,0.15); color: var(--accent); }
+
+        .price-display {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .price-label {
+            font-size: 0.7rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .price-value {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--green);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        /* ─── VIEWS ─── */
+        .view-container { flex: 1; display: none; position: relative; overflow: hidden; }
+        .view-container.active { display: flex; flex-direction: column; }
+
+        #canvas-3d { width: 100%; height: 100%; display: block; outline: none; }
+
+        #loading {
+            position: absolute;
+            inset: 0;
+            background: rgba(26,26,26,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--accent);
+            z-index: 5;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .loading-dot {
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* ─── 2D DRAWINGS ─── */
+        .drawings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 12px;
+            padding: 16px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .drawing-box {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .drawing-box h3 {
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 10px;
+            align-self: flex-start;
+        }
+
+        canvas.drawing-canvas {
+            max-width: 100%;
+            max-height: calc(100% - 28px);
+            flex: 1;
+        }
+
+        /* Spec panel */
+        #spec-text {
+            font-size: 0.82rem;
+            color: var(--text);
+            line-height: 1.8;
+            width: 100%;
+            align-self: flex-start;
+        }
+
+        #spec-text b { color: var(--accent); font-weight: 600; }
+
+        /* ─── DOPYT FORM ─── */
+        #view-form.active { justify-content: center; align-items: center; background: var(--dark); }
+
+        .inquiry-form {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 36px 40px;
+            width: 440px;
+            max-width: calc(100% - 40px);
+        }
+
+        .inquiry-form h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .inquiry-form .form-sub {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-bottom: 26px;
+        }
+
+        .form-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+
+        .form-field label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .form-field input {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.18s;
+        }
+
+        .form-field input:focus { border-color: var(--accent); }
+        .form-field input::placeholder { color: var(--muted); }
+
+        .summary-box {
+            background: rgba(200,169,110,0.07);
+            border: 1px solid rgba(200,169,110,0.25);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            font-size: 0.8rem;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        .summary-box b { color: var(--accent); font-weight: 600; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 13px;
+            background: var(--accent);
+            color: var(--dark);
+            border: none;
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            transition: background 0.18s, transform 0.1s;
+        }
+
+        .btn-submit:hover { background: var(--accent2); transform: translateY(-1px); }
+        .btn-submit:active { transform: translateY(0); }
+
+        /* ─── HINT CHIP ─── */
+        .hint-chip {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(26,26,26,0.8);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.7rem;
+            color: var(--muted);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h1>Konfigurátor Altánku</h1>
+        <p>3D vizualizácia konštrukcie</p>
+    </div>
+
+    <div class="sidebar-body">
+
+        <!-- DIMENSIONS -->
+        <div>
+            <div class="section-title">Rozmery</div>
+            <div class="slider-group">
+                <div class="slider-item">
+                    <div class="slider-label">
+                        <span>Šírka</span>
+                        <span class="slider-val" id="width-val">3,0 m</span>
+                    </div>
+                    <input type="range" id="width" min="2" max="6" step="0.5" value="3">
+                </div>
+                <div class="slider-item">
+                    <div class="slider-label">
+                        <span>Dĺžka</span>
+                        <span class="slider-val" id="length-val">4,0 m</span>
+                    </div>
+                    <input type="range" id="length" min="2" max="8" step="0.5" value="4">
+                </div>
+                <div class="slider-item">
+                    <div class="slider-label">
+                        <span>Výška stĺpov</span>
+                        <span class="slider-val" id="height-val">2,2 m</span>
+                    </div>
+                    <input type="range" id="height" min="2" max="3" step="0.1" value="2.2">
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ROOF TYPE -->
+        <div>
+            <div class="section-title">Typ strechy</div>
+            <div class="btn-group">
+                <button class="btn-opt active" data-group="roof-type" data-val="sedlova" onclick="selectOption(this, 'roof-type')">
+                    <span class="opt-icon">🏠</span>Sedlová
+                </button>
+                <button class="btn-opt" data-group="roof-type" data-val="valbova" onclick="selectOption(this, 'roof-type')">
+                    <span class="opt-icon">⛺</span>Valbová
+                </button>
+                <button class="btn-opt" data-group="roof-type" data-val="pultova" onclick="selectOption(this, 'roof-type')">
+                    <span class="opt-icon">📐</span>Pultová
+                </button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ROOF MATERIAL -->
+        <div>
+            <div class="section-title">Krytina</div>
+            <div class="btn-group">
+                <button class="btn-opt active" data-group="roof-material" data-val="plech" onclick="selectOption(this, 'roof-material')">
+                    <span class="opt-icon">🔩</span>Plech
+                </button>
+                <button class="btn-opt" data-group="roof-material" data-val="skridla" onclick="selectOption(this, 'roof-material')">
+                    <span class="opt-icon">🧱</span>Škridla
+                </button>
+                <button class="btn-opt" data-group="roof-material" data-val="sindel" onclick="selectOption(this, 'roof-material')">
+                    <span class="opt-icon">🌿</span>Šindeľ
+                </button>
+                <button class="btn-opt" data-group="roof-material" data-val="polykarbonat" onclick="selectOption(this, 'roof-material')">
+                    <span class="opt-icon">💎</span>Polykarbonát
+                </button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ACCESSORIES -->
+        <div>
+            <div class="section-title">Príslušenstvo</div>
+            <div class="toggle-list">
+                <div class="toggle-item transparent-toggle" id="toggle-hide-cover" onclick="toggleItem(this, 'hideCover')">
+                    <div class="toggle-label">
+                        <span class="t-icon">🔍</span>
+                        <span>Priehľadná krytina (rošt)</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="toggle-item" id="toggle-railing" onclick="toggleItem(this, 'railing')">
+                    <div class="toggle-label">
+                        <span class="t-icon">🪟</span>
+                        <span>Zábradlie</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="toggle-item" id="toggle-furniture" onclick="toggleItem(this, 'furniture')">
+                    <div class="toggle-label">
+                        <span class="t-icon">🪑</span>
+                        <span>Lavičky a stôl</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="toggle-item" id="toggle-lighting" onclick="toggleItem(this, 'lighting')">
+                    <div class="toggle-label">
+                        <span class="t-icon">💡</span>
+                        <span>Osvetlenie LED</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="top-bar">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('3d', this)">
+                <span class="tab-icon">🧊</span> 3D Náhľad
+            </button>
+            <button class="tab-btn" onclick="switchTab('2d', this)">
+                <span class="tab-icon">📐</span> 2D Výkresy
+            </button>
+            <button class="tab-btn" onclick="switchTab('form', this)">
+                <span class="tab-icon">📩</span> Dopyt
+            </button>
+        </div>
+        <div class="price-display">
+            <span class="price-label">Cena od</span>
+            <span class="price-value" id="price-display">0 €</span>
+        </div>
+    </div>
+
+    <div id="view-3d" class="view-container active">
+        <div id="loading">
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <span>Generujem konštrukciu</span>
+        </div>
+        <canvas id="canvas-3d"></canvas>
+        <div class="hint-chip">🖱 Otáčať · Koliesko = Zoom · Pravé tlačidlo = Posun</div>
+    </div>
+
+    <div id="view-2d" class="view-container">
+        <div class="drawings-grid">
+            <div class="drawing-box">
+                <h3>Pôdorys</h3>
+                <canvas id="canvas-top" class="drawing-canvas"></canvas>
+            </div>
+            <div class="drawing-box">
+                <h3>Predný pohľad</h3>
+                <canvas id="canvas-front" class="drawing-canvas"></canvas>
+            </div>
+            <div class="drawing-box">
+                <h3>Bočný pohľad</h3>
+                <canvas id="canvas-side" class="drawing-canvas"></canvas>
+            </div>
+            <div class="drawing-box">
+                <h3>Špecifikácia</h3>
+                <div id="spec-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-form" class="view-container">
+        <div class="inquiry-form">
+            <h2>Nezáväzný dopyt</h2>
+            <p class="form-sub">Zašleme vám cenovú ponuku do 24 hodín</p>
+            <div class="summary-box" id="inquiry-summary">—</div>
+            <div class="form-field">
+                <label>Meno a priezvisko</label>
+                <input type="text" placeholder="Ján Novák" required>
+            </div>
+            <div class="form-field">
+                <label>E-mailová adresa</label>
+                <input type="email" placeholder="jan@example.sk" required>
+            </div>
+            <button class="btn-submit" onclick="submitForm()">Odoslať dopyt →</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const state = {
+        width: 3, length: 4, height: 2.2,
+        roofType: 'sedlova', roofMaterial: 'plech',
+        hideCover: false, railing: false, furniture: false, lighting: false,
+        postSize: 0.12, price: 0
+    };
+
+    const prices = {
+        basePerM2: 120,
+        roofTypes: { 'sedlova': 0, 'valbova': 200, 'pultova': -50 },
+        materials: { 'plech': 25, 'skridla': 45, 'sindel': 30, 'polykarbonat': 35 },
+        acc: { railing: 45, furniture: 250, lighting: 150 }
+    };
+
+    // ─── CONTROLS ───
+    function selectOption(btn, group) {
+        document.querySelectorAll(`[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (group === 'roof-type') { state.roofType = btn.dataset.val; }
+        else if (group === 'roof-material') { state.roofMaterial = btn.dataset.val; }
+        updateAll();
+    }
+
+    function toggleItem(el, key) {
+        state[key] = !state[key];
+        el.classList.toggle('active', state[key]);
+        updateAll();
+    }
+
+    ['width', 'length', 'height'].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            state[id] = parseFloat(e.target.value);
+            const fmt = state[id].toFixed(1).replace('.', ',');
+            document.getElementById(`${id}-val`).innerText = `${fmt} m`;
+            updateAll();
+        });
+    });
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view-container').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`view-${tabId}`).classList.add('active');
+        if (tabId === '2d') draw2D();
+        if (tabId === 'form') updateInquirySummary();
+        if (tabId === '3d') resize3D();
+    }
+
+    function submitForm() {
+        alert('Dopyt bol odoslaný. Ďakujeme!');
+    }
+
+    // ─── PRICE ───
+    function calculatePrice() {
+        const area = state.width * state.length;
+        const roofAreaMult = state.roofType === 'pultova' ? 1.1 : 1.3;
+        let total = area * prices.basePerM2 + prices.roofTypes[state.roofType] + (area * roofAreaMult * prices.materials[state.roofMaterial]);
+        if (state.railing) total += ((state.width + state.length) * 2 - 1.5) * prices.acc.railing;
+        if (state.furniture) total += prices.acc.furniture;
+        if (state.lighting) total += prices.acc.lighting;
+        state.price = Math.round(total);
+        document.getElementById('price-display').innerText = `${state.price.toLocaleString('sk-SK')} €`;
+    }
+
+    function updateInquirySummary() {
+        const roofNames = { sedlova: 'Sedlová', valbova: 'Valbová', pultova: 'Pultová' };
+        const matNames = { plech: 'Plech', skridla: 'Škridla', sindel: 'Asfaltový šindeľ', polykarbonat: 'Polykarbonát' };
+        const extras = [];
+        if (state.railing) extras.push('Zábradlie');
+        if (state.furniture) extras.push('Lavičky a stôl');
+        if (state.lighting) extras.push('Osvetlenie LED');
+        document.getElementById('inquiry-summary').innerHTML = `
+            <b>Rozmery:</b> ${state.width} × ${state.length} m, výška ${state.height} m<br>
+            <b>Strecha:</b> ${roofNames[state.roofType]}, ${matNames[state.roofMaterial]}<br>
+            <b>Príslušenstvo:</b> ${extras.length ? extras.join(', ') : 'Žiadne'}<br>
+            <b>Orientačná cena:</b> ${state.price.toLocaleString('sk-SK')} €
+        `;
+    }
+
+    // ─── 3D ENGINE ───
+    const canvas3d = document.getElementById('canvas-3d');
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1e2530);
+    scene.fog = new THREE.Fog(0x1e2530, 20, 60);
+
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+    scene.add(new THREE.AmbientLight(0xd0e0ff, 0.5));
+    const dirLight = new THREE.DirectionalLight(0xfff5e0, 1.0);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    scene.add(dirLight);
+    const fillLight = new THREE.DirectionalLight(0x8090c0, 0.3);
+    fillLight.position.set(-8, 5, -8);
+    scene.add(fillLight);
+
+    const matWood = new THREE.MeshLambertMaterial({ color: 0x7a4f2a });
+    const matWoodLight = new THREE.MeshLambertMaterial({ color: 0x9a6a3a });
+    const matConcrete = new THREE.MeshLambertMaterial({ color: 0x78888a });
+    const matSteel = new THREE.MeshLambertMaterial({ color: 0x3a4a5c });
+    const roofColors = { 'plech': 0x3a3a44, 'skridla': 0x7a2f1d, 'sindel': 0x2c3228, 'polykarbonat': 0xd0e8f0 };
+
+    let gazeboGroup = new THREE.Group();
+    scene.add(gazeboGroup);
+
+    function createBox(w, h, d, mat, x, y, z, rotZ = 0) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        mesh.position.set(x, y, z);
+        mesh.rotation.z = rotZ;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        gazeboGroup.add(mesh);
+        return mesh;
+    }
+
+    function createBeam(x1, y1, z1, x2, y2, z2, w, h, mat) {
+        const p1 = new THREE.Vector3(x1, y1, z1);
+        const p2 = new THREE.Vector3(x2, y2, z2);
+        const distance = p1.distanceTo(p2);
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, distance), mat);
+        mesh.position.copy(p1).lerp(p2, 0.5);
+        mesh.lookAt(p2);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        gazeboGroup.add(mesh);
+        return mesh;
+    }
+
+    function build3DModel() {
+        while (gazeboGroup.children.length > 0) {
+            const child = gazeboGroup.children[0];
+            gazeboGroup.remove(child);
+            if (child.geometry) child.geometry.dispose();
+        }
+
+        const { width: W, length: L, height: H, postSize: ps } = state;
+
+        // Ground plane
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x2a3830 });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), groundMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        gazeboGroup.add(plane);
+
+        // Grid
+        const gridHelper = new THREE.GridHelper(30, 30, 0x334433, 0x2a3830);
+        gridHelper.position.y = 0.001;
+        gazeboGroup.add(gridHelper);
+
+        const corners = [[-W/2, -L/2], [W/2, -L/2], [-W/2, L/2], [W/2, L/2]];
+        if (L >= 5) corners.push([-W/2, 0], [W/2, 0]);
+
+        corners.forEach(pos => {
+            createBox(0.2, 0.4, 0.2, matConcrete, pos[0], 0.2, pos[1]);
+            createBox(0.13, 0.1, 0.13, matSteel, pos[0], 0.45, pos[1]);
+            createBox(ps, H, ps, matWood, pos[0], H/2 + 0.5, pos[1]);
+            const dirX = pos[0] < 0 ? 1 : -1;
+            const dirZ = pos[1] < 0 ? 1 : -1;
+            createBox(0.08, 0.6, 0.08, matWood, pos[0] + dirX*0.3, H + 0.5 - 0.3, pos[1], Math.PI/4 * -dirX);
+            const vzpera = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08), matWood);
+            vzpera.position.set(pos[0], H + 0.5 - 0.3, pos[1] + dirZ*0.3);
+            vzpera.rotation.x = Math.PI/4 * dirZ;
+            gazeboGroup.add(vzpera);
+        });
+
+        const topY = H + 0.5;
+        const plateTopY = topY + ps/2;
+
+        createBox(W + ps, ps, ps, matWood, 0, topY, -L/2);
+        createBox(W + ps, ps, ps, matWood, 0, topY, L/2);
+        createBox(ps, ps, L + ps, matWood, -W/2, topY, 0);
+        createBox(ps, ps, L + ps, matWood, W/2, topY, 0);
+
+        const roofOverhang = 0.5;
+        const rW = W + roofOverhang * 2;
+        const rL = L + roofOverhang * 2;
+        const rafterH = 0.15;
+        const rafterW = 0.06;
+        const lathH = 0.03;
+
+        const isTransparent = state.roofMaterial === 'polykarbonat' || state.hideCover;
+        const roofMatSettings = {
+            color: roofColors[state.roofMaterial],
+            side: THREE.DoubleSide,
+            transparent: isTransparent,
+            opacity: state.hideCover ? 0.2 : (state.roofMaterial === 'polykarbonat' ? 0.6 : 1),
+            depthWrite: !isTransparent
+        };
+        const roofMat = new THREE.MeshPhysicalMaterial(roofMatSettings);
+
+        // ==================== SEDLOVÁ ====================
+        if (state.roofType === 'sedlova') {
+            const roofH = W * 0.3;
+            const angle = Math.atan2(roofH, W/2);
+            const rafterOffset = (rafterH / 2) * Math.cos(angle) + 0.02;
+            const yRidge = plateTopY + roofH + rafterOffset;
+            const yEave = plateTopY - roofOverhang * Math.tan(angle) + rafterOffset;
+            const slopeLen = Math.sqrt(Math.pow(W/2 + roofOverhang, 2) + Math.pow((yRidge - yEave), 2));
+
+            [-L/2, L/2].forEach(zPos => {
+                createBox(0.08, roofH, 0.08, matWood, 0, plateTopY + roofH/2, zPos);
+                const studSpacing = 0.6;
+                for (let x = studSpacing; x < W/2 - 0.1; x += studSpacing) {
+                    const h = (W/2 - x) * Math.tan(angle);
+                    if (h > 0.05) {
+                        createBox(0.06, h, 0.06, matWoodLight, x, plateTopY + h/2, zPos);
+                        createBox(0.06, h, 0.06, matWoodLight, -x, plateTopY + h/2, zPos);
+                    }
+                }
+            });
+
+            const numRafters = Math.ceil(rL / 0.9) + 1;
+            const rafterSpacing = rL / (numRafters - 1);
+            for (let i = 0; i < numRafters; i++) {
+                const zPos = -rL/2 + i * rafterSpacing;
+                createBeam(-(W/2 + roofOverhang), yEave, zPos, 0, yRidge, zPos, rafterW, rafterH, matWoodLight);
+                createBeam(W/2 + roofOverhang, yEave, zPos, 0, yRidge, zPos, rafterW, rafterH, matWoodLight);
+            }
+
+            const numLaths = Math.floor(slopeLen / 0.35) + 1;
+            for (let i = 0; i <= numLaths; i++) {
+                const t = i / numLaths;
+                const xL = THREE.MathUtils.lerp(-(W/2 + roofOverhang), 0, t);
+                const xR = THREE.MathUtils.lerp(W/2 + roofOverhang, 0, t);
+                const yCenter = THREE.MathUtils.lerp(yEave, yRidge, t);
+                const yLath = yCenter + rafterH/2 + lathH/2;
+                createBeam(xL, yLath, -rL/2, xL, yLath, rL/2, 0.05, lathH, matWoodLight);
+                createBeam(xR, yLath, -rL/2, xR, yLath, rL/2, 0.05, lathH, matWoodLight);
+            }
+
+            const roofGeo = new THREE.BoxGeometry(slopeLen, 0.02, rL);
+            const yCover = (yEave + yRidge)/2 + rafterH/2 + lathH + 0.01;
+            const cx = (W/2 + roofOverhang) / 2;
+            const roof1 = new THREE.Mesh(roofGeo, roofMat);
+            roof1.position.set(-cx, yCover, 0); roof1.rotation.z = angle; gazeboGroup.add(roof1);
+            const roof2 = new THREE.Mesh(roofGeo, roofMat);
+            roof2.position.set(cx, yCover, 0); roof2.rotation.z = -angle; gazeboGroup.add(roof2);
+
+        // ==================== VALBOVÁ ====================
+        } else if (state.roofType === 'valbova') {
+            const roofH = Math.min(W, L) * 0.4;
+            const runMax = Math.min(rW, rL) / 2;
+            const isLongZ = rL > rW;
+            const ridgeLen = Math.abs(rL - rW);
+            const r0x = isLongZ ? 0 : -ridgeLen/2; const r0z = isLongZ ? -ridgeLen/2 : 0;
+            const r1x = isLongZ ? 0 : ridgeLen/2; const r1z = isLongZ ? ridgeLen/2 : 0;
+
+            const rafterOffset = (rafterH / 2) * Math.cos(Math.atan2(roofH, runMax)) + 0.02;
+            const yRidge = plateTopY + roofH + rafterOffset;
+            const yPlate = plateTopY + rafterOffset;
+
+            if (ridgeLen > 0.1) {
+                createBeam(r0x, yRidge, r0z, r1x, yRidge, r1z, 0.08, rafterH, matWoodLight);
+            } else {
+                createBox(0.12, roofH, 0.12, matWood, 0, plateTopY + roofH/2, 0);
+            }
+
+            const pFL = {x: -rW/2, z: -rL/2}; const pFR = {x: rW/2, z: -rL/2};
+            const pBL = {x: -rW/2, z: rL/2};  const pBR = {x: rW/2, z: rL/2};
+            let tFL, tFR, tBL, tBR;
+            if (isLongZ) {
+                tFL = {x: r0x, z: r0z}; tFR = {x: r0x, z: r0z};
+                tBL = {x: r1x, z: r1z}; tBR = {x: r1x, z: r1z};
+            } else {
+                tFL = {x: r0x, z: r0z}; tBL = {x: r0x, z: r0z};
+                tFR = {x: r1x, z: r1z}; tBR = {x: r1x, z: r1z};
+            }
+
+            createBeam(pFL.x, yPlate, pFL.z, tFL.x, yRidge, tFL.z, 0.08, rafterH, matWoodLight);
+            createBeam(pFR.x, yPlate, pFR.z, tFR.x, yRidge, tFR.z, 0.08, rafterH, matWoodLight);
+            createBeam(pBL.x, yPlate, pBL.z, tBL.x, yRidge, tBL.z, 0.08, rafterH, matWoodLight);
+            createBeam(pBR.x, yPlate, pBR.z, tBR.x, yRidge, tBR.z, 0.08, rafterH, matWoodLight);
+
+            const rafterSpacing = 0.9;
+            const numZ = Math.ceil(rL / rafterSpacing);
+            const actualSpacingZ = rL / numZ;
+            for (let i = 1; i < numZ; i++) {
+                const z = -rL/2 + i * actualSpacingZ;
+                const d = Math.min(rW/2, rL/2 - Math.abs(z));
+                const h = d * (roofH / runMax);
+                createBeam(-rW/2, yPlate, z, -rW/2 + d, yPlate + h, z, rafterW, rafterH, matWoodLight);
+                createBeam(rW/2, yPlate, z, rW/2 - d, yPlate + h, z, rafterW, rafterH, matWoodLight);
+            }
+
+            const numX = Math.ceil(rW / rafterSpacing);
+            const actualSpacingX = rW / numX;
+            for (let i = 1; i < numX; i++) {
+                const x = -rW/2 + i * actualSpacingX;
+                const d = Math.min(rL/2, rW/2 - Math.abs(x));
+                const h = d * (roofH / runMax);
+                createBeam(x, yPlate, -rL/2, x, yPlate + h, -rL/2 + d, rafterW, rafterH, matWoodLight);
+                createBeam(x, yPlate, rL/2, x, yPlate + h, rL/2 - d, rafterW, rafterH, matWoodLight);
+            }
+
+            const slopeLenV = Math.sqrt(Math.pow(runMax, 2) + Math.pow(roofH, 2));
+            const numLathsV = Math.floor(slopeLenV / 0.35) + 1;
+            for (let i = 1; i <= numLathsV; i++) {
+                const t = i / numLathsV;
+                const cw = rW * (1 - t) + (isLongZ ? 0 : ridgeLen) * t;
+                const cl = rL * (1 - t) + (isLongZ ? ridgeLen : 0) * t;
+                const yLath = yPlate + t * roofH + rafterH/2 + lathH/2;
+                createBeam(-cw/2, yLath, -cl/2, cw/2, yLath, -cl/2, 0.05, lathH, matWoodLight);
+                createBeam(-cw/2, yLath, cl/2, cw/2, yLath, cl/2, 0.05, lathH, matWoodLight);
+                createBeam(-cw/2, yLath, -cl/2, -cw/2, yLath, cl/2, 0.05, lathH, matWoodLight);
+                createBeam(cw/2, yLath, -cl/2, cw/2, yLath, cl/2, 0.05, lathH, matWoodLight);
+            }
+
+            const roofYOffset = rafterH/2 + lathH;
+            const vertices = new Float32Array([
+                -rW/2, yPlate+roofYOffset, -rL/2, rW/2, yPlate+roofYOffset, -rL/2, r0x, yRidge+roofYOffset, r0z,
+                rW/2, yPlate+roofYOffset, -rL/2, r1x, yRidge+roofYOffset, r1z, r0x, yRidge+roofYOffset, r0z,
+                rW/2, yPlate+roofYOffset, rL/2, -rW/2, yPlate+roofYOffset, rL/2, r1x, yRidge+roofYOffset, r1z,
+                -rW/2, yPlate+roofYOffset, rL/2, r0x, yRidge+roofYOffset, r0z, r1x, yRidge+roofYOffset, r1z,
+                -rW/2, yPlate+roofYOffset, rL/2, -rW/2, yPlate+roofYOffset, -rL/2, r0x, yRidge+roofYOffset, r0z,
+                -rW/2, yPlate+roofYOffset, rL/2, r0x, yRidge+roofYOffset, r0z, r1x, yRidge+roofYOffset, r1z,
+                rW/2, yPlate+roofYOffset, -rL/2, rW/2, yPlate+roofYOffset, rL/2, r1x, yRidge+roofYOffset, r1z,
+                rW/2, yPlate+roofYOffset, -rL/2, r1x, yRidge+roofYOffset, r1z, r0x, yRidge+roofYOffset, r0z
+            ]);
+            const roofGeo = new THREE.BufferGeometry();
+            roofGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            roofGeo.computeVertexNormals();
+            const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+            gazeboGroup.add(roofMesh);
+
+        // ==================== PULTOVÁ ====================
+        } else if (state.roofType === 'pultova') {
+            const roofH = 0.5;
+            const angle = Math.atan2(roofH, L);
+            const frontPlateTopY = plateTopY + roofH;
+
+            createBox(W + ps, ps, ps, matWood, 0, topY + roofH, L/2);
+
+            const numStudsP = Math.max(2, Math.ceil(W / 1.5) + 1);
+            for (let i = 0; i < numStudsP; i++) {
+                const xPos = -W/2 + i * (W / (numStudsP - 1));
+                createBox(ps, roofH - ps, ps, matWood, xPos, topY + ps/2 + (roofH - ps)/2, L/2);
+            }
+
+            createBeam(-W/2, plateTopY, -L/2, -W/2, frontPlateTopY, L/2, ps, ps, matWood);
+            createBeam(W/2, plateTopY, -L/2, W/2, frontPlateTopY, L/2, ps, ps, matWood);
+
+            const rafterOffset = (rafterH / 2) * Math.cos(angle) + 0.02;
+            const yBackEave = plateTopY + rafterOffset - roofOverhang * Math.tan(angle);
+            const yFrontEave = frontPlateTopY + rafterOffset + roofOverhang * Math.tan(angle);
+            const slopeLenP = Math.sqrt(Math.pow(rL, 2) + Math.pow((yFrontEave - yBackEave), 2));
+
+            const numRafters = Math.ceil(rW / 0.9) + 1;
+            const rafterSpacing = rW / (numRafters - 1);
+            for (let i = 0; i < numRafters; i++) {
+                const xPos = -rW/2 + i * rafterSpacing;
+                createBeam(xPos, yBackEave, -rL/2, xPos, yFrontEave, rL/2, rafterW, rafterH, matWoodLight);
+            }
+
+            const numLathsP = Math.floor(slopeLenP / 0.35) + 1;
+            for (let i = 0; i <= numLathsP; i++) {
+                const t = i / numLathsP;
+                const z = THREE.MathUtils.lerp(-rL/2, rL/2, t);
+                const yCenter = THREE.MathUtils.lerp(yBackEave, yFrontEave, t);
+                const yLath = yCenter + rafterH/2 + lathH/2;
+                createBeam(-rW/2, yLath, z, rW/2, yLath, z, 0.05, lathH, matWoodLight);
+            }
+
+            const roofGeo = new THREE.BoxGeometry(rW, 0.02, slopeLenP);
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.set(0, (yBackEave + yFrontEave)/2 + rafterH/2 + lathH + 0.01, 0);
+            roof.rotation.x = -angle;
+            gazeboGroup.add(roof);
+        }
+
+        if (state.railing) {
+            createBox(0.05, 0.1, L, matWood, -W/2, 0.9, 0);
+            createBox(0.05, 0.1, L, matWood, W/2, 0.9, 0);
+            createBox(W, 0.1, 0.05, matWood, 0, 0.9, -L/2);
+            for (let i = 0; i < L; i += 0.3) {
+                createBox(0.03, 0.4, 0.03, matWoodLight, -W/2, 0.7, -L/2 + i);
+                createBox(0.03, 0.4, 0.03, matWoodLight, W/2, 0.7, -L/2 + i);
+            }
+            for (let i = 0.3; i < W; i += 0.3) {
+                createBox(0.03, 0.4, 0.03, matWoodLight, -W/2 + i, 0.7, -L/2);
+            }
+        }
+
+        if (state.furniture) {
+            createBox(1.5, 0.05, 0.8, matWoodLight, 0, 0.75, 0);
+            createBox(0.1, 0.7, 0.1, matWood, -0.6, 0.4, 0);
+            createBox(0.1, 0.7, 0.1, matWood, 0.6, 0.4, 0);
+            createBox(1.5, 0.05, 0.4, matWoodLight, 0, 0.45, 0.7);
+            createBox(0.1, 0.4, 0.1, matWood, -0.6, 0.25, 0.7);
+            createBox(0.1, 0.4, 0.1, matWood, 0.6, 0.25, 0.7);
+            createBox(1.5, 0.05, 0.4, matWoodLight, 0, 0.45, -0.7);
+            createBox(0.1, 0.4, 0.1, matWood, -0.6, 0.25, -0.7);
+            createBox(0.1, 0.4, 0.1, matWood, 0.6, 0.25, -0.7);
+        }
+
+        if (state.lighting) {
+            const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffddaa }));
+            bulb.position.set(0, topY - 0.1, 0);
+            gazeboGroup.add(bulb);
+            const pLight = new THREE.PointLight(0xffddaa, 1, 5);
+            pLight.position.set(0, topY - 0.2, 0);
+            gazeboGroup.add(pLight);
+        }
+    }
+
+    function resize3D() {
+        const container = document.getElementById('view-3d');
+        const w = container.clientWidth;
+        const h = container.clientHeight || 500;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // ─── 2D DRAWINGS ───
+    function drawDimensionLine(ctx, startX, startY, endX, endY, label) {
+        ctx.beginPath(); ctx.lineWidth = 1; ctx.strokeStyle = '#c8a96e';
+        ctx.moveTo(startX, startY); ctx.lineTo(endX, endY); ctx.stroke();
+        ctx.fillStyle = '#c8a96e'; ctx.font = '11px DM Sans, sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(label, (startX + endX) / 2, (startY + endY) / 2 - 5);
+    }
+
+    function drawTextCentered(ctx, text, x, y, font, color) {
+        ctx.font = font || '13px DM Sans, sans-serif';
+        ctx.fillStyle = color || '#888';
+        ctx.textAlign = 'center';
+        ctx.fillText(text, x, y);
+    }
+
+    function draw2D() {
+        const scale = 30; const cx = 200, cy = 150; const roofOverhang = 0.5;
+        ['canvas-top', 'canvas-front', 'canvas-side'].forEach(id => {
+            const c = document.getElementById(id);
+            c.width = 400; c.height = 300;
+            const ctx = c.getContext('2d');
+            ctx.clearRect(0, 0, 400, 300);
+            ctx.fillStyle = '#1e2530';
+            ctx.fillRect(0, 0, 400, 300);
+            ctx.lineWidth = 1.5; ctx.strokeStyle = '#c8a96e';
+        });
+
+        const ctxT = document.getElementById('canvas-top').getContext('2d');
+        const p = state.postSize * scale;
+        const wPx = state.width * scale; const lPx = state.length * scale; const overPx = roofOverhang * scale;
+
+        ctxT.strokeStyle = '#c8a96e'; ctxT.lineWidth = 1.5;
+        ctxT.strokeRect(cx - wPx/2, cy - lPx/2, wPx, lPx);
+        ctxT.fillStyle = '#7a4f2a';
+        ctxT.fillRect(cx - wPx/2 - p/2, cy - lPx/2 - p/2, p, p);
+        ctxT.fillRect(cx + wPx/2 - p/2, cy - lPx/2 - p/2, p, p);
+        ctxT.fillRect(cx - wPx/2 - p/2, cy + lPx/2 - p/2, p, p);
+        ctxT.fillRect(cx + wPx/2 - p/2, cy + lPx/2 - p/2, p, p);
+        ctxT.setLineDash([5, 5]); ctxT.strokeStyle = '#555';
+        ctxT.strokeRect(cx - wPx/2 - overPx, cy - lPx/2 - overPx, wPx + overPx*2, lPx + overPx*2);
+        ctxT.setLineDash([]);
+        drawDimensionLine(ctxT, cx - wPx/2, cy + lPx/2 + overPx + 20, cx + wPx/2, cy + lPx/2 + overPx + 20, `ŠÍRKA: ${state.width}m`);
+        drawDimensionLine(ctxT, cx + wPx/2 + overPx + 20, cy - lPx/2, cx + wPx/2 + overPx + 20, cy + lPx/2, `DĹŽKA: ${state.length}m`);
+        drawTextCentered(ctxT, 'PÔDORYS', cx, 20);
+
+        const ctxF = document.getElementById('canvas-front').getContext('2d');
+        const hPx = state.height * scale;
+        const roofH = (state.roofType === 'sedlova' ? state.width*0.3 : (state.roofType==='valbova' ? state.width*0.4 : 0.5));
+        const roofHPx = roofH * scale;
+        const baseFY = cy + hPx/2 + 20;
+        const ridgeLenPx = Math.abs(state.length - state.width) * scale;
+
+        ctxF.strokeStyle = '#444'; ctxF.lineWidth = 1;
+        ctxF.beginPath(); ctxF.moveTo(cx - wPx/2 - overPx - 20, baseFY); ctxF.lineTo(cx + wPx/2 + overPx + 20, baseFY); ctxF.stroke();
+        ctxF.strokeStyle = '#c8a96e'; ctxF.lineWidth = 1.5;
+        ctxF.strokeRect(cx - wPx/2, baseFY - hPx, p, hPx); ctxF.fillStyle = '#7a4f2a'; ctxF.fillRect(cx - wPx/2 - p/4, baseFY - p/4, p + p/2, p/4);
+        ctxF.strokeRect(cx + wPx/2 - p, baseFY - hPx, p, hPx); ctxF.fillRect(cx + wPx/2 - p - p/4, baseFY - p/4, p + p/2, p/4);
+        ctxF.strokeRect(cx - wPx/2 - p, baseFY - hPx - p, wPx + p*2, p);
+
+        ctxF.beginPath();
+        if (state.roofType === 'pultova') {
+            ctxF.strokeRect(cx - wPx/2 - overPx, baseFY - hPx - p - 10, wPx + overPx*2, 20);
+        } else if (state.roofType === 'valbova') {
+            const isLongX = state.width > state.length;
+            ctxF.moveTo(cx - wPx/2 - overPx, baseFY - hPx - p);
+            if (isLongX) {
+                ctxF.lineTo(cx - ridgeLenPx/2, baseFY - hPx - p - roofHPx);
+                ctxF.lineTo(cx + ridgeLenPx/2, baseFY - hPx - p - roofHPx);
+            } else { ctxF.lineTo(cx, baseFY - hPx - p - roofHPx); }
+            ctxF.lineTo(cx + wPx/2 + overPx, baseFY - hPx - p);
+        } else {
+            ctxF.moveTo(cx - wPx/2 - overPx, baseFY - hPx - p);
+            ctxF.lineTo(cx, baseFY - hPx - p - roofHPx);
+            ctxF.lineTo(cx + wPx/2 + overPx, baseFY - hPx - p);
+        }
+        if (state.roofType !== 'pultova') { ctxF.closePath(); ctxF.stroke(); }
+
+        drawDimensionLine(ctxF, cx + wPx/2 + 30, baseFY - hPx, cx + wPx/2 + 30, baseFY, `VÝŠKA: ${state.height}m`);
+        drawTextCentered(ctxF, 'PREDNÝ POHĽAD', cx, 20);
+
+        const ctxS = document.getElementById('canvas-side').getContext('2d');
+        const sW_Px = state.length * scale;
+        ctxS.strokeStyle = '#444'; ctxS.lineWidth = 1;
+        ctxS.beginPath(); ctxS.moveTo(cx - sW_Px/2 - overPx - 20, baseFY); ctxS.lineTo(cx + sW_Px/2 + overPx + 20, baseFY); ctxS.stroke();
+        ctxS.strokeStyle = '#c8a96e'; ctxS.lineWidth = 1.5;
+        ctxS.strokeRect(cx - sW_Px/2, baseFY - hPx, p, hPx); ctxS.fillStyle = '#7a4f2a'; ctxS.fillRect(cx - sW_Px/2 - p/4, baseFY - p/4, p + p/2, p/4);
+        ctxS.strokeRect(cx + sW_Px/2 - p, baseFY - hPx, p, hPx); ctxS.fillRect(cx + sW_Px/2 - p - p/4, baseFY - p/4, p + p/2, p/4);
+        ctxS.strokeRect(cx - sW_Px/2 - p, baseFY - hPx - p, sW_Px + p*2, p);
+
+        ctxS.beginPath();
+        if (state.roofType === 'pultova') {
+            ctxS.moveTo(cx - sW_Px/2 - overPx, baseFY - hPx - p);
+            ctxS.lineTo(cx + sW_Px/2 + overPx, baseFY - hPx - p - roofHPx);
+            ctxS.lineTo(cx + sW_Px/2 + overPx, baseFY - hPx - p);
+            ctxS.closePath(); ctxS.stroke();
+        } else if (state.roofType === 'valbova') {
+            const isLongZ = state.length > state.width;
+            ctxS.moveTo(cx - sW_Px/2 - overPx, baseFY - hPx - p);
+            if (isLongZ) {
+                ctxS.lineTo(cx - ridgeLenPx/2, baseFY - hPx - p - roofHPx);
+                ctxS.lineTo(cx + ridgeLenPx/2, baseFY - hPx - p - roofHPx);
+            } else { ctxS.lineTo(cx, baseFY - hPx - p - roofHPx); }
+            ctxS.lineTo(cx + sW_Px/2 + overPx, baseFY - hPx - p);
+            ctxS.closePath(); ctxS.stroke();
+        } else {
+            ctxS.strokeRect(cx - sW_Px/2 - overPx, baseFY - hPx - p - roofHPx, sW_Px + overPx*2, roofHPx);
+        }
+
+        drawDimensionLine(ctxS, cx + sW_Px/2 + 30, baseFY - hPx, cx + sW_Px/2 + 30, baseFY, `VÝŠKA: ${state.height}m`);
+        drawTextCentered(ctxS, 'BOČNÝ POHĽAD', cx, 20);
+
+        const roofNames = { sedlova: 'Sedlová', valbova: 'Valbová', pultova: 'Pultová' };
+        const matNames = { plech: 'Plech', skridla: 'Škridla', sindel: 'Asfaltový šindeľ', polykarbonat: 'Polykarbonát' };
+        document.getElementById('spec-text').innerHTML = `
+            <b>Rozmery pôdorysu:</b> ${state.width} × ${state.length} m<br>
+            <b>Výška po väznicu:</b> ${state.height} m<br>
+            <b>Celková výška:</b> ${(state.height + roofH).toFixed(1)} m<br>
+            <b>Typ strechy:</b> ${roofNames[state.roofType]}<br>
+            <b>Krytina:</b> ${matNames[state.roofMaterial]}<br>
+            <b>Konštrukcia:</b> Stĺpy 120×120 mm<br>
+            <b>Krokvy:</b> á 90 cm, Latovanie á 35 cm
+        `;
+    }
+
+    function updateAll() {
+        document.getElementById('loading').style.opacity = '1';
+        document.getElementById('loading').style.display = 'flex';
+        setTimeout(() => {
+            build3DModel();
+            calculatePrice();
+            if (document.getElementById('view-2d').classList.contains('active')) draw2D();
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 300);
+        }, 50);
+    }
+
+    window.onload = () => {
+        camera.position.set(6, 5, 8);
+        camera.lookAt(0, 2, 0);
+        window.addEventListener('resize', resize3D);
+        resize3D();
+        updateAll();
+        animate();
+    };
+</script>
+</body>
+</html>
